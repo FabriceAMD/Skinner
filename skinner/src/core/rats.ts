@@ -1,4 +1,5 @@
 import type { Rng } from './rng';
+import { BAR_POS, Repertoire, type Behavior } from './repertoire';
 
 /** Configuração de um rato. Campos ausentes assumem os valores de DEFAULTS. */
 export interface RatConfig {
@@ -15,6 +16,8 @@ export interface RatConfig {
   explore?: number;
   /** Quanto cada punição reduz a propensão a responder (0 a 1). */
   punishGain?: number;
+  /** Liga o repertório de comportamentos (andar, tocar, pressionar) com posição na caixa. */
+  repertorio?: boolean;
 }
 
 const DEFAULTS = {
@@ -42,6 +45,8 @@ export interface RatModel {
   onReinforcer(lever: number, t: number): void;
   onPunishment(lever: number, t: number): void;
   advance(dt: number): void;
+  /** Comportamento atual e posição, quando o repertório está ligado. */
+  behaviorState?(): { behavior: Behavior; pos: number };
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
@@ -128,6 +133,54 @@ class KellerRat implements RatModel {
   }
 }
 
+/**
+ * Com repertório ligado, o rato só pressiona quando está na barra e escolheu o comportamento
+ * `press`. A taxa do modelo continua valendo nesse caso; o repertório decide quando ela pode agir.
+ */
+class ShapedRat implements RatModel {
+  private readonly rep: Repertoire;
+
+  constructor(
+    private readonly inner: RatModel,
+    readonly config: RatConfig,
+  ) {
+    this.rep = new Repertoire();
+  }
+
+  chooseLever(levers: number, rng: Rng): number {
+    return this.inner.chooseLever(levers, rng);
+  }
+
+  responseProbability(dt: number, rng: Rng): number {
+    this.rep.step(dt, rng);
+    if (this.rep.pos < BAR_POS) return 0;
+    const base = this.inner.responseProbability(dt, rng);
+    // tocar a barra de perto às vezes empurra a alavanca; pressionar de fato depende do peso da pressão
+    if (this.rep.behavior === 'touch') return base * 0.5;
+    if (this.rep.behavior === 'press') return base * Math.min(1, this.rep.weight('press') / 0.2);
+    return 0;
+  }
+
+  onReinforcer(lever: number, t: number): void {
+    this.inner.onReinforcer(lever, t);
+    this.rep.reinforce(t);
+  }
+
+  onPunishment(lever: number, t: number): void {
+    this.inner.onPunishment(lever, t);
+    this.rep.punish(t);
+  }
+
+  advance(dt: number): void {
+    this.inner.advance(dt);
+  }
+
+  behaviorState(): { behavior: Behavior; pos: number } {
+    return { behavior: this.rep.behavior, pos: this.rep.pos };
+  }
+}
+
 export function createRat(config: RatConfig): RatModel {
-  return config.model === 'molar' ? new MolarRat(config) : new KellerRat(config);
+  const inner = config.model === 'molar' ? new MolarRat(config) : new KellerRat(config);
+  return config.repertorio ? new ShapedRat(inner, config) : inner;
 }

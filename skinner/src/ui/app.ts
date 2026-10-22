@@ -3,6 +3,8 @@ import {
   compareIntent,
   describeSession,
   inputFromLog,
+  avaliar,
+  BEHAVIOR_LABEL,
   methodChecks,
   Session,
   type EventLog,
@@ -195,6 +197,7 @@ class App {
             <ul class="notes" data-role="notes"></ul>
           </div>
           <div class="col">
+            <div class="card" data-role="missao"></div>
             <div class="record card" data-role="record"></div>
             <h3>O que o registro mostra</h3>
             <ul class="feedback card" data-role="feedback"></ul>
@@ -261,6 +264,10 @@ class App {
     const lastResponse = lastEvent(log, 'response');
     const lastReinforcer = lastEvent(log, 'reinforcer');
     const ratSlot = q<HTMLElement>('[data-role=rat]');
+    const ratState = session.ratState;
+    if (ratSlot && ratState) {
+      ratSlot.style.left = `${6 + ratState.pos * 36}%`;
+    }
     if (ratSlot) {
       ratSlot.classList.toggle('press', lastResponse !== undefined && now - lastResponse.t < 250);
       ratSlot.classList.toggle('eat', lastReinforcer !== undefined && now - lastReinforcer.t < 900);
@@ -294,7 +301,10 @@ class App {
 
     const counters = q<HTMLElement>('[data-role=counters]');
     if (counters) {
-      counters.innerHTML = this.levers
+      const behaviorLine = ratState
+        ? `<div><strong>Rato</strong> · ${esc(BEHAVIOR_LABEL[ratState.behavior as keyof typeof BEHAVIOR_LABEL])}</div>`
+        : '';
+      counters.innerHTML = behaviorLine + this.levers
         .map((_, i) => {
           const spec = lastSpec(log, i);
           const punish = lastPunishSpec(log, i);
@@ -304,6 +314,16 @@ class App {
           return `<div><strong>Alavanca ${i + 1}</strong> · ${esc(spec)}${punishText} · respostas ${responses} · reforços ${reinforcers}</div>`;
         })
         .join('');
+    }
+
+    const missao = q<HTMLElement>('[data-role=missao]');
+    if (missao) {
+      if (this.lesson?.criterio) {
+        const progresso = avaliar(log, this.lesson.criterio);
+        missao.innerHTML = `<h3>Missão</h3><p class="${progresso.ok ? 'ok' : ''}">${progresso.ok ? '✔ Concluída' : '○ Em andamento'} · ${esc(progresso.texto)}</p>`;
+      } else {
+        missao.innerHTML = '<h3>Aula livre</h3><p class="hint">Sem missão nesta sessão.</p>';
+      }
     }
 
     const record = q<HTMLElement>('[data-role=record]');
@@ -417,7 +437,7 @@ class App {
     this.session = new Session({
       seed: this.seed,
       durationMs: this.durationMs,
-      rat: this.rat,
+      rat: { ...this.rat, repertorio: this.lesson?.repertorio ?? false },
       levers: this.levers,
       curriculum: this.lesson?.curriculo,
       punish: this.lesson?.punicao,

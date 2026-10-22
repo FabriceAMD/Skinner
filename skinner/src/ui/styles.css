@@ -150,3 +150,4 @@ button:disabled { opacity: .5; cursor: default; }
 .box.punished { box-shadow: inset 0 0 0 4px #dc2626; }
 .checks { list-style: none; padding: 0; margin: 4px 0; }
 .checks li { margin: 3px 0; }
+.rat-slot { transition: left .6s ease-in-out, transform .15s; }

@@ -1,5 +1,25 @@
 [
   {
+    "id": "comedouro",
+    "titulo": "Treino de comedouro",
+    "rato": "olga-kubo",
+    "duracaoMin": 6,
+    "objetivo": "O pellet cai sozinho a cada 8 s, sem que o rato faça nada. Não entregue nada à mão. Sua missão é acompanhar cinco reforços e anotar o que o rato faz entre eles.",
+    "alavancas": [
+      {
+        "kind": "DRO",
+        "ms": 8000
+      }
+    ],
+    "criterio": {
+      "tipo": "reforcos",
+      "n": 5
+    },
+    "perguntas": [
+      "O que o rato fazia logo antes de cada pellet cair?"
+    ]
+  },
+  {
     "id": "modelagem",
     "titulo": "Modelagem com critério",
     "rato": "fred-keller",
@@ -98,6 +118,27 @@
     "perguntas": [
       "A taxa de resposta cai quando a punição começa?",
       "A supressão some quando a punição para, ou demora a passar?"
+    ]
+  },
+  {
+    "id": "modelagem-barra",
+    "titulo": "Modelagem até a barra",
+    "rato": "carolina-bori",
+    "duracaoMin": 25,
+    "objetivo": "A alavanca não reforça nada sozinha. Entregue reforço à mão quando o rato se aproximar da barra, depois quando tocá-la, e depois quando pressioná-la. Espere até 1 s depois do comportamento: o atraso muda o que fica mais provável. Missão: três pressões registradas.",
+    "alavancas": [
+      {
+        "kind": "EXT"
+      }
+    ],
+    "repertorio": true,
+    "criterio": {
+      "tipo": "respostas",
+      "n": 3
+    },
+    "perguntas": [
+      "Qual aproximação você reforçou primeiro? Quanto tempo levou?",
+      "Quando a pressão apareceu, o que você fez logo antes?"
     ]
   }
 ]

@@ -41,6 +41,7 @@ export class Session {
   private nextScripted = 0;
   private now = 0;
   private finished = false;
+  private lastBehavior: string | undefined;
 
   constructor(private readonly cfg: SessionConfig) {
     if (cfg.levers.length === 0) throw new Error('É preciso ao menos uma alavanca');
@@ -67,6 +68,11 @@ export class Session {
 
   get levers(): number {
     return this.schedules.length;
+  }
+
+  /** Comportamento e posição do rato agora, se o repertório estiver ligado. */
+  get ratState(): { behavior: string; pos: number } | undefined {
+    return this.rat.behaviorState?.();
   }
 
   get ended(): boolean {
@@ -118,6 +124,14 @@ export class Session {
     this.finished = true;
   }
 
+  private logBehavior(now: number): void {
+    const state = this.rat.behaviorState?.();
+    if (state && state.behavior !== this.lastBehavior) {
+      this.lastBehavior = state.behavior;
+      this.log.add({ t: now, type: 'behavior', text: state.behavior });
+    }
+  }
+
   private checkLever(lever: number): void {
     if (lever < 0 || lever >= this.schedules.length) throw new Error(`Alavanca ${lever} não existe`);
   }
@@ -133,6 +147,7 @@ export class Session {
     const { rng, rat, schedules, log, now } = this;
     const lever = rat.chooseLever(schedules.length, rng);
     const responded = rng() < rat.responseProbability(this.dt, rng);
+    this.logBehavior(now);
     if (responded) {
       log.add({ t: now, type: 'response', lever });
       // punição é contingente à resposta na alavanca em que ela ocorreu

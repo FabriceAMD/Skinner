@@ -1,4 +1,5 @@
 import type { EventLog } from './log';
+import { BEHAVIOR_LABEL, type Behavior } from './repertoire';
 
 const WINDOW_MS = 60_000;
 
@@ -73,7 +74,49 @@ export function describeSession(log: EventLog, durationMs: number): string[] {
     );
   }
 
+  statements.push(...timingFeedback(log));
   return statements;
+}
+
+/**
+ * Timing do reforço: o que o rato fazia no instante de cada reforço à mão, e quanto tempo se passou
+ * desde o último toque na barra. É aqui que o estudante vê o que está fortalecendo.
+ */
+export function timingFeedback(log: EventLog): string[] {
+  const behaviors = log.ofType('behavior');
+  if (behaviors.length === 0) return [];
+  const behaviorAt = (t: number): Behavior => {
+    let current: Behavior = 'corner';
+    for (const e of behaviors) {
+      if (e.t > t) break;
+      current = e.text as Behavior;
+    }
+    return current;
+  };
+
+  const manual = log.ofType('reinforcer').filter(e => e.source === 'manual');
+  const lines: string[] = [];
+  if (manual.length === 0) return lines;
+
+  const counts = new Map<Behavior, number>();
+  for (const r of manual) {
+    const b = behaviorAt(r.t);
+    counts.set(b, (counts.get(b) ?? 0) + 1);
+  }
+  const parts = [...counts].map(([b, n]) => `${n} ${BEHAVIOR_LABEL[b]}`);
+  lines.push(`Dos seus reforços à mão, ${parts.join(', ')}. O que o rato fazia no instante do reforço é o que ficou mais provável.`);
+
+  const touches = behaviors.filter(e => e.text === 'touch' || e.text === 'press');
+  const gaps: number[] = [];
+  for (const r of manual) {
+    const last = [...touches].reverse().find(e => e.t <= r.t);
+    if (last && r.t - last.t <= 3000) gaps.push(r.t - last.t);
+  }
+  if (gaps.length > 0) {
+    const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length / 1000;
+    lines.push(`Seu reforço chegou em média ${avg.toFixed(1)} s depois do último toque na barra (${gaps.length} casos).`);
+  }
+  return lines;
 }
 
 export interface MethodCheck {

@@ -5,3 +5,5 @@ export * from './rats';
 export * from './session';
 export * from './classify';
 export * from './feedback';
+export * from './missions';
+export * from './repertoire';
