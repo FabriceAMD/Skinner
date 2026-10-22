@@ -3,10 +3,12 @@ import lessonsRaw from './lessons.json';
 import narracaoRaw from './narracao.json';
 import type { RatConfig, ScheduleSpec, Stage } from '../core';
 
+export type Acessorio = 'gravata' | 'oculos' | 'cracha' | null;
+
 export interface RatEntry extends RatConfig {
   papel: string;
   descricao: string;
-  visual: { pelagem: string; cabelo: string | null; gravata: boolean };
+  visual: { pelagem: string; cabelo: string | null; acessorio: Acessorio };
 }
 
 export interface Lesson {
@@ -17,6 +19,7 @@ export interface Lesson {
   objetivo: string;
   alavancas: ScheduleSpec[];
   curriculo?: Stage[];
+  punicao?: ScheduleSpec[];
   perguntas: string[];
 }
 
@@ -59,6 +62,7 @@ export const LESSONS: Lesson[] = (lessonsRaw as Array<Record<string, unknown>>).
         minReinforcers: s.minReinforcers,
       }))
     : undefined,
+  punicao: raw.punicao ? (raw.punicao as unknown[]).map(parseSpec) : undefined,
   perguntas: raw.perguntas as string[],
 }));
 

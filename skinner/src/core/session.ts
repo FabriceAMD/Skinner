@@ -6,6 +6,7 @@ import { createSchedule, Curriculum, formatSpec, type Schedule, type ScheduleSpe
 /** Ações do estudante. Sem `t`: aplicadas no instante atual da sessão. */
 export type StudentCommand =
   | { kind: 'set_schedule'; lever: number; spec: ScheduleSpec }
+  | { kind: 'set_punish'; lever: number; spec: ScheduleSpec }
   | { kind: 'deliver'; lever: number }
   | { kind: 'note'; text: string };
 
@@ -18,8 +19,10 @@ export interface SessionConfig {
   /** Passo de tempo virtual em ms. Padrão: 100. */
   dt?: number;
   rat: RatConfig;
-  /** Um esquema por alavanca. */
+  /** Um esquema de reforço por alavanca. */
   levers: ScheduleSpec[];
+  /** Um esquema de punição por alavanca (EXT = sem punição). Padrão: sem punição. */
+  punish?: ScheduleSpec[];
   /** Se informado, controla a alavanca 0 com critério de domínio. */
   curriculum?: Stage[];
   actions?: StudentAction[];
@@ -32,6 +35,7 @@ export class Session {
   private readonly rng: Rng;
   private readonly rat: RatModel;
   private readonly schedules: Schedule[];
+  private readonly punishers: Schedule[];
   private curriculum: Curriculum | null;
   private readonly scripted: StudentAction[];
   private nextScripted = 0;
@@ -46,10 +50,15 @@ export class Session {
     this.curriculum = cfg.curriculum ? new Curriculum(cfg.curriculum) : null;
     const specs = cfg.levers.map((spec, lever) => (lever === 0 && this.curriculum ? this.curriculum.spec : spec));
     this.schedules = specs.map(spec => createSchedule(spec));
+    const punish = cfg.punish ?? specs.map(() => ({ kind: 'EXT' }) as ScheduleSpec);
+    this.punishers = specs.map((_, i) => createSchedule(punish[i] ?? { kind: 'EXT' }));
     this.scripted = [...(cfg.actions ?? [])].sort((a, b) => a.t - b.t);
 
     this.log.add({ t: 0, type: 'session_start', text: `rato=${cfg.rat.id} semente=${cfg.seed}` });
     specs.forEach((spec, lever) => this.log.add({ t: 0, type: 'schedule_set', lever, spec: formatSpec(spec), text: 'inicial' }));
+    punish.forEach((spec, lever) => {
+      if (spec.kind !== 'EXT') this.log.add({ t: 0, type: 'schedule_set', lever, spec: formatSpec(spec), text: 'punição inicial' });
+    });
   }
 
   get time(): number {
@@ -87,6 +96,15 @@ export class Session {
       if (command.lever === 0) this.curriculum = null;
       this.schedules[command.lever] = createSchedule(command.spec, this.now);
       this.log.add({ t: this.now, type: 'schedule_set', lever: command.lever, spec: formatSpec(command.spec) });
+    } else if (command.kind === 'set_punish') {
+      this.punishers[command.lever] = createSchedule(command.spec, this.now);
+      this.log.add({
+        t: this.now,
+        type: 'schedule_set',
+        lever: command.lever,
+        spec: formatSpec(command.spec),
+        text: 'punição',
+      });
     } else {
       this.log.add({ t: this.now, type: 'reinforcer', lever: command.lever, source: 'manual' });
       this.rat.onReinforcer(command.lever, this.now);
@@ -115,7 +133,14 @@ export class Session {
     const { rng, rat, schedules, log, now } = this;
     const lever = rat.chooseLever(schedules.length, rng);
     const responded = rng() < rat.responseProbability(this.dt, rng);
-    if (responded) log.add({ t: now, type: 'response', lever });
+    if (responded) {
+      log.add({ t: now, type: 'response', lever });
+      // punição é contingente à resposta na alavanca em que ela ocorreu
+      if (this.punishers[lever].step(now, true, rng)) {
+        log.add({ t: now, type: 'punishment', lever });
+        rat.onPunishment(lever, now);
+      }
+    }
 
     schedules.forEach((schedule, i) => {
       if (!schedule.step(now, responded && i === lever, rng)) return;

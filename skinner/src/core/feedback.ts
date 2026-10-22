@@ -15,7 +15,8 @@ const plural = (n: number, one: string, many: string): string => (n === 1 ? one 
  */
 export function describeSession(log: EventLog, durationMs: number): string[] {
   const statements: string[] = [];
-  const changes = log.ofType('schedule_set').filter(e => e.text !== 'inicial');
+  const changes = log.ofType('schedule_set').filter(e => e.text === undefined);
+  const punishSets = log.ofType('schedule_set').filter(e => e.text === 'punição');
   const minutes = durationMs / 60_000;
 
   statements.push(
@@ -23,6 +24,15 @@ export function describeSession(log: EventLog, durationMs: number): string[] {
       ? `Você mudou o esquema ${changes.length} ${plural(changes.length, 'vez', 'vezes')} em ${minutes.toFixed(1)} min.`
       : 'Você não mudou o esquema durante a sessão.',
   );
+
+  if (punishSets.length > 0) {
+    statements.push(`Você configurou ${punishSets.length} ${plural(punishSets.length, 'esquema de punição', 'esquemas de punição')}.`);
+  }
+
+  const punishments = log.ofType('punishment').length;
+  if (punishments > 0) {
+    statements.push(`Foram registradas ${punishments} ${plural(punishments, 'punição', 'punições')}, todas depois de respostas.`);
+  }
 
   const reinforcers = log.ofType('reinforcer');
   const manual = reinforcers.filter(e => e.source === 'manual').length;
@@ -64,4 +74,39 @@ export function describeSession(log: EventLog, durationMs: number): string[] {
   }
 
   return statements;
+}
+
+export interface MethodCheck {
+  ok: boolean;
+  text: string;
+}
+
+/**
+ * Práticas de método observáveis no registro. Descrevem o que foi feito; não avaliam o resultado.
+ */
+export function methodChecks(log: EventLog): MethodCheck[] {
+  const changes = log.ofType('schedule_set').filter(e => e.text === undefined && e.t > 0);
+  const notes = log.ofType('note');
+  const last = log.all.length > 0 ? log.all[log.all.length - 1].t : 0;
+  const firstChange = changes[0];
+  const notedBeforeChange = firstChange ? notes.some(n => n.t < firstChange.t) : notes.length > 0;
+
+  return [
+    {
+      ok: notedBeforeChange,
+      text: 'Anotou a hipótese antes de mexer no esquema',
+    },
+    {
+      ok: changes.length > 0,
+      text: 'Testou pelo menos uma mudança de esquema',
+    },
+    {
+      ok: notes.length > 0,
+      text: 'Registrou pelo menos uma anotação',
+    },
+    {
+      ok: last >= 5 * 60_000,
+      text: 'Deixou a sessão rodar por pelo menos 5 min',
+    },
+  ];
 }

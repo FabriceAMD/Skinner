@@ -3,6 +3,7 @@ import {
   compareIntent,
   describeSession,
   inputFromLog,
+  methodChecks,
   Session,
   type EventLog,
   type LogEvent,
@@ -177,6 +178,16 @@ class App {
               </div>
               <p class="hint">Para FR e VR, o valor é o número de respostas. Para os demais, são segundos.</p>
             </form>
+            <form class="card" data-form="punish">
+              <h3>Punição (bip abstrato)</h3>
+              <div class="row">
+                <select name="lever">${scheduleLever}</select>
+                <select name="kind">${kindOptions('EXT')}</select>
+                <input name="value" type="number" value="4" min="0" step="any" aria-label="valor da punição" />
+                <button type="submit">Aplicar</button>
+              </div>
+              <p class="hint">Punição é contingente às respostas. EXT desliga a punição.</p>
+            </form>
             <form class="card" data-form="note">
               <h3>Anotação</h3>
               <div class="row"><input name="text" type="text" placeholder="o que você está testando agora?" /><button type="submit">Anotar</button></div>
@@ -260,6 +271,8 @@ class App {
       el.classList.toggle('down', pressed);
     });
     q<HTMLElement>('[data-role=lamp]')?.classList.toggle('on', lastReinforcer !== undefined && now - lastReinforcer.t < 1000);
+    const lastPunishment = lastEvent(log, 'punishment');
+    q<HTMLElement>('[data-role=box]')?.classList.toggle('punished', lastPunishment !== undefined && now - lastPunishment.t < 300);
     q<HTMLElement>('[data-role=pellet]')?.classList.toggle('on', lastReinforcer !== undefined && now - lastReinforcer.t < 900);
 
     const narr = q<HTMLElement>('[data-role=narr]');
@@ -268,11 +281,14 @@ class App {
       const mechanical = lastReinforcer
         ? `Reforço ${manual ? 'entregue à mão' : 'automático'} na alavanca ${(lastReinforcer.lever ?? 0) + 1}, aos ${clock(lastReinforcer.t)}.`
         : '';
+      const punishedRecently = lastPunishment !== undefined && now - lastPunishment.t < 2000;
       const flavour = session.ended
         ? narrate('fim', now)
-        : lastReinforcer
-          ? narrate(manual ? 'reforco_manual' : 'reforco_auto', lastReinforcer.t)
-          : narrate('sem_reforco', now);
+        : punishedRecently
+          ? narrate('punicao', lastPunishment.t)
+          : lastReinforcer
+            ? narrate(manual ? 'reforco_manual' : 'reforco_auto', lastReinforcer.t)
+            : narrate('sem_reforco', now);
       narr.innerHTML = `${esc(mechanical)} <em>${esc(flavour)}</em>`;
     }
 
@@ -281,9 +297,11 @@ class App {
       counters.innerHTML = this.levers
         .map((_, i) => {
           const spec = lastSpec(log, i);
+          const punish = lastPunishSpec(log, i);
           const responses = log.ofType('response', i).length;
           const reinforcers = log.ofType('reinforcer', i).length;
-          return `<div><strong>Alavanca ${i + 1}</strong> · ${esc(spec)} · respostas ${responses} · reforços ${reinforcers}</div>`;
+          const punishText = punish ? ` · punição ${esc(punish)}` : '';
+          return `<div><strong>Alavanca ${i + 1}</strong> · ${esc(spec)}${punishText} · respostas ${responses} · reforços ${reinforcers}</div>`;
         })
         .join('');
     }
@@ -359,6 +377,11 @@ class App {
       const lever = Number(data.get('lever'));
       const spec = specFrom(String(data.get('kind')) as ScheduleSpec['kind'], Number(data.get('value')));
       this.act({ kind: 'set_schedule', lever, spec });
+    } else if (kind === 'punish') {
+      const data = new FormData(form);
+      const lever = Number(data.get('lever'));
+      const spec = specFrom(String(data.get('kind')) as ScheduleSpec['kind'], Number(data.get('value')));
+      this.act({ kind: 'set_punish', lever, spec });
     } else if (kind === 'note') {
       const input = form.querySelector<HTMLInputElement>('input[name=text]');
       const text = input?.value.trim() ?? '';
@@ -397,6 +420,7 @@ class App {
       rat: this.rat,
       levers: this.levers,
       curriculum: this.lesson?.curriculo,
+      punish: this.lesson?.punicao,
     });
     this.mountPlay();
     this.startLoop();
@@ -429,8 +453,14 @@ class App {
         </div>`;
     });
 
+    const checks = methodChecks(log)
+      .map(c => `<li class="${c.ok ? 'ok' : 'miss'}">${c.ok ? '✔' : '✖'} ${esc(c.text)}</li>`)
+      .join('');
+    const done = methodChecks(log).filter(c => c.ok).length;
     const result = this.root.querySelector<HTMLElement>('[data-role=result]');
-    if (result) result.innerHTML = `<h3>Comparação</h3>${parts.join('')}`;
+    if (result) {
+      result.innerHTML = `<h3>Comparação</h3>${parts.join('')}<h3>Práticas de método: ${done} de 4</h3><ul class="checks">${checks}</ul>`;
+    }
     this.update();
   }
 
@@ -455,9 +485,16 @@ function lastEvent(log: EventLog, type: LogEvent['type']): LogEvent | undefined 
   return undefined;
 }
 
+/** Punição atualmente em vigor na alavanca, se houver. */
+function lastPunishSpec(log: EventLog, lever: number): string | undefined {
+  const sets = log.ofType('schedule_set', lever).filter(e => e.text === 'punição' || e.text === 'punição inicial');
+  const last = sets[sets.length - 1];
+  return last && last.spec !== 'EXT' ? last.spec : undefined;
+}
+
 /** Esquema atualmente em vigor na alavanca. */
 function lastSpec(log: EventLog, lever: number): string {
-  const sets = log.ofType('schedule_set', lever);
+  const sets = log.ofType('schedule_set', lever).filter(e => e.text === undefined || e.text === 'inicial');
   const last = sets[sets.length - 1];
   return last?.spec ?? '—';
 }

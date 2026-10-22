@@ -10,7 +10,11 @@
     "baseRate": 8,
     "maxRate": 50,
     "noise": 0.15,
-    "visual": { "pelagem": "#b9a48a", "cabelo": null, "gravata": true }
+    "visual": {
+      "pelagem": "#b9a48a",
+      "cabelo": null,
+      "acessorio": "gravata"
+    }
   },
   {
     "id": "molar",
@@ -23,7 +27,11 @@
     "halfRate": 10,
     "explore": 0.2,
     "noise": 0.2,
-    "visual": { "pelagem": "#8e8e8e", "cabelo": null, "gravata": true }
+    "visual": {
+      "pelagem": "#8e8e8e",
+      "cabelo": null,
+      "acessorio": "gravata"
+    }
   },
   {
     "id": "carolina-bori",
@@ -36,11 +44,15 @@
     "halfRate": 8,
     "explore": 0.1,
     "noise": 0.1,
-    "visual": { "pelagem": "#d9c7a7", "cabelo": "#5b3a29", "gravata": false }
+    "visual": {
+      "pelagem": "#d9c7a7",
+      "cabelo": "#5b3a29",
+      "acessorio": "oculos"
+    }
   },
   {
-    "id": "elder",
-    "name": "Elder",
+    "id": "helder",
+    "name": "Helder",
     "model": "keller",
     "papel": "Revisor de critérios",
     "descricao": "Aprende rápido e esquece devagar. Não avança sem atingir o critério.",
@@ -49,11 +61,15 @@
     "baseRate": 6,
     "maxRate": 45,
     "noise": 0.1,
-    "visual": { "pelagem": "#a3a0a0", "cabelo": null, "gravata": false }
+    "visual": {
+      "pelagem": "#a3a0a0",
+      "cabelo": null,
+      "acessorio": null
+    }
   },
   {
-    "id": "olga-cubo",
-    "name": "Olga Cubo",
+    "id": "olga-kubo",
+    "name": "Olga Kubo",
     "model": "molar",
     "papel": "Responsável por cubículos",
     "descricao": "Responde muito quando o reforço é frequente e quase para quando ele some.",
@@ -62,7 +78,11 @@
     "halfRate": 15,
     "explore": 0.25,
     "noise": 0.2,
-    "visual": { "pelagem": "#c4a57a", "cabelo": "#2f2f2f", "gravata": true }
+    "visual": {
+      "pelagem": "#c4a57a",
+      "cabelo": "#2f2f2f",
+      "acessorio": "gravata"
+    }
   },
   {
     "id": "ana-carolina-ramos",
@@ -75,7 +95,11 @@
     "baseRate": 9,
     "maxRate": 55,
     "noise": 0.35,
-    "visual": { "pelagem": "#e0c3a0", "cabelo": "#c0392b", "gravata": false }
+    "visual": {
+      "pelagem": "#e0c3a0",
+      "cabelo": "#c0392b",
+      "acessorio": "cracha"
+    }
   },
   {
     "id": "funcionario",
@@ -88,6 +112,28 @@
     "halfRate": 12,
     "explore": 0.3,
     "noise": 0.5,
-    "visual": { "pelagem": "#9c8a72", "cabelo": "#8b5a2b", "gravata": true }
+    "visual": {
+      "pelagem": "#9c8a72",
+      "cabelo": "#8b5a2b",
+      "acessorio": "gravata"
+    }
+  },
+  {
+    "id": "botome",
+    "name": "Botome",
+    "model": "molar",
+    "papel": "Responsável por pausas",
+    "descricao": "Responde pouco, mas em rajadas. Reage forte a punição e demora para voltar ao normal.",
+    "baseRate": 8,
+    "maxRate": 50,
+    "halfRate": 8,
+    "explore": 0.3,
+    "noise": 0.3,
+    "punishGain": 0.35,
+    "visual": {
+      "pelagem": "#b08968",
+      "cabelo": null,
+      "acessorio": "cracha"
+    }
   }
 ]

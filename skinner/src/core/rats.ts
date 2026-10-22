@@ -13,6 +13,8 @@ export interface RatConfig {
   forgetPerMin?: number;
   noise?: number;
   explore?: number;
+  /** Quanto cada punição reduz a propensão a responder (0 a 1). */
+  punishGain?: number;
 }
 
 const DEFAULTS = {
@@ -24,20 +26,21 @@ const DEFAULTS = {
   forgetPerMin: 0.05, // keller: fração da força perdida por minuto
   noise: 0.2, // variação multiplicativa por passo
   explore: 0.2, // molar: fração de escolhas uniformes; evita o colapso para uma alavanca só
+  punishGain: 0.2, // fração da propensão perdida a cada punição
 };
 
 /**
- * Modelo de rato. Os dois modelos respondem a reforços de formas distintas:
+ * Modelo de rato. Os dois modelos respondem a reforços e punições de formas distintas:
  * - molar: taxa de resposta sobe de forma hiperbólica com a taxa de reforço (Herrnstein), e a escolha
- *   entre alavancas segue a lei da igualação (alocação proporcional aos reforços recentes).
- * - keller: força de resposta aprendida reforço a reforço e esquecida com o tempo; avanço de estágio
- *   acontece no currículo, não no rato.
+ *   entre alavancas segue a lei da igualação. Punição suprime a taxa e a supressão passa com o tempo.
+ * - keller: força de resposta aprendida reforço a reforço e esquecida com o tempo; punição desgasta a força.
  */
 export interface RatModel {
   readonly config: RatConfig;
   chooseLever(levers: number, rng: Rng): number;
   responseProbability(dt: number, rng: Rng): number;
   onReinforcer(lever: number, t: number): void;
+  onPunishment(lever: number, t: number): void;
   advance(dt: number): void;
 }
 
@@ -46,6 +49,7 @@ const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 class MolarRat implements RatModel {
   private readonly p: typeof DEFAULTS & RatConfig;
   private now = 0;
+  private suppression = 0;
   private reinforcers: { t: number; lever: number }[] = [];
 
   constructor(readonly config: RatConfig) {
@@ -76,15 +80,21 @@ class MolarRat implements RatModel {
   responseProbability(dt: number, rng: Rng): number {
     const perMin = this.recent().length / (this.p.windowMs / 60_000);
     const rate = this.p.baseRate + this.p.maxRate * (perMin / (perMin + this.p.halfRate));
-    return clamp01(rate * (dt / 60_000) * (1 + this.p.noise * (2 * rng() - 1)));
+    const suppressed = rate * (1 - 0.7 * this.suppression);
+    return clamp01(suppressed * (dt / 60_000) * (1 + this.p.noise * (2 * rng() - 1)));
   }
 
   onReinforcer(lever: number, t: number): void {
     this.reinforcers.push({ t, lever });
   }
 
+  onPunishment(): void {
+    this.suppression += this.p.punishGain * (1 - this.suppression);
+  }
+
   advance(dt: number): void {
     this.now += dt;
+    this.suppression *= Math.exp(-0.5 * (dt / 60_000));
   }
 }
 
@@ -107,6 +117,10 @@ class KellerRat implements RatModel {
 
   onReinforcer(): void {
     this.strength += this.p.learnRate * (1 - this.strength);
+  }
+
+  onPunishment(): void {
+    this.strength *= 1 - this.p.punishGain;
   }
 
   advance(dt: number): void {

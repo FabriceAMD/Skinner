@@ -6,6 +6,7 @@ export type EventType =
   | 'stage_change'
   | 'response'
   | 'reinforcer'
+  | 'punishment'
   | 'note';
 
 export interface LogEvent {
