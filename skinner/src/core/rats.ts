@@ -20,11 +20,17 @@ export interface RatConfig {
   repertorio?: boolean;
 }
 
+/** O que o rato lembra entre sessões. Guardado pela interface, no navegador. */
+export interface RatMemory {
+  strengths?: Record<'on' | 'off', number>;
+  weights?: Partial<Record<Behavior, number>>;
+}
+
 const DEFAULTS = {
   baseRate: 10, // respostas/min sem reforço
   maxRate: 60, // acréscimo máximo de respostas/min
   halfRate: 10, // molar: reforços/min que dão metade do acréscimo
-  windowMs: 300_000, // molar: janela para medir a taxa de reforço (5 min, evita oscilação)
+  windowMs: 300_000, // molar: janela para medir a taxa de reforço
   learnRate: 0.3, // keller: força aprendida por reforço
   forgetPerMin: 0.05, // keller: fração da força perdida por minuto
   noise: 0.2, // variação multiplicativa por passo
@@ -32,11 +38,17 @@ const DEFAULTS = {
   punishGain: 0.2, // fração da propensão perdida a cada punição
 };
 
+/** Saciedade: cada reforço sacia um pouco e a fome volta com o tempo. Reforço perde valor com a saciedade. */
+const SATIETY_PER_REINFORCER = 0.1;
+const SATIETY_DECAY_PER_MIN = 0.25;
+const MIN_REINFORCER_VALUE = 0.2;
+
 /**
  * Modelo de rato. Os dois modelos respondem a reforços e punições de formas distintas:
  * - molar: taxa de resposta sobe de forma hiperbólica com a taxa de reforço (Herrnstein), e a escolha
  *   entre alavancas segue a lei da igualação. Punição suprime a taxa e a supressão passa com o tempo.
- * - keller: força de resposta aprendida reforço a reforço e esquecida com o tempo; punição desgasta a força.
+ * - keller: força de resposta aprendida reforço a reforço e esquecida com o tempo. A força é separada
+ *   para luz acesa e luz apagada, então o rato pode aprender a discriminar.
  */
 export interface RatModel {
   readonly config: RatConfig;
@@ -45,8 +57,14 @@ export interface RatModel {
   onReinforcer(lever: number, t: number): void;
   onPunishment(lever: number, t: number): void;
   advance(dt: number): void;
+  /** Luz de estímulo (S+ acesa, S− apagada). Ignorada por modelos sem discriminação. */
+  setStimulus?(on: boolean): void;
   /** Comportamento atual e posição, quando o repertório está ligado. */
   behaviorState?(): { behavior: Behavior; pos: number };
+  /** Fome, de 0 (saciado) a 1 (com fome). */
+  hunger(): number;
+  snapshot(): RatMemory;
+  restore(memory: RatMemory): void;
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
@@ -55,21 +73,27 @@ class MolarRat implements RatModel {
   private readonly p: typeof DEFAULTS & RatConfig;
   private now = 0;
   private suppression = 0;
-  private reinforcers: { t: number; lever: number }[] = [];
+  private satiety = 0;
+  /** Reforços com peso: reforço dado com o rato saciado vale menos. */
+  private reinforcers: { t: number; lever: number; w: number }[] = [];
 
   constructor(readonly config: RatConfig) {
     this.p = { ...DEFAULTS, ...config };
   }
 
-  private recent(lever?: number): { t: number; lever: number }[] {
+  private recent(lever?: number): { t: number; lever: number; w: number }[] {
     const from = this.now - this.p.windowMs;
     while (this.reinforcers.length > 0 && this.reinforcers[0].t < from) this.reinforcers.shift();
     return this.reinforcers.filter(r => lever === undefined || r.lever === lever);
   }
 
+  private value(lever?: number): number {
+    return this.recent(lever).reduce((sum, r) => sum + r.w, 0);
+  }
+
   chooseLever(levers: number, rng: Rng): number {
     if (levers === 1) return 0;
-    const counts = Array.from({ length: levers }, (_, i) => this.recent(i).length);
+    const counts = Array.from({ length: levers }, (_, i) => this.value(i));
     const total = counts.reduce((a, b) => a + b, 0);
     const e = this.p.explore;
     // lei da igualação: alocação proporcional aos reforços recentes, com uma parcela de exploração
@@ -83,14 +107,15 @@ class MolarRat implements RatModel {
   }
 
   responseProbability(dt: number, rng: Rng): number {
-    const perMin = this.recent().length / (this.p.windowMs / 60_000);
+    const perMin = this.value() / (this.p.windowMs / 60_000);
     const rate = this.p.baseRate + this.p.maxRate * (perMin / (perMin + this.p.halfRate));
     const suppressed = rate * (1 - 0.7 * this.suppression);
     return clamp01(suppressed * (dt / 60_000) * (1 + this.p.noise * (2 * rng() - 1)));
   }
 
   onReinforcer(lever: number, t: number): void {
-    this.reinforcers.push({ t, lever });
+    this.reinforcers.push({ t, lever, w: Math.max(MIN_REINFORCER_VALUE, 1 - this.satiety) });
+    this.satiety = Math.min(1, this.satiety + SATIETY_PER_REINFORCER);
   }
 
   onPunishment(): void {
@@ -100,12 +125,25 @@ class MolarRat implements RatModel {
   advance(dt: number): void {
     this.now += dt;
     this.suppression *= Math.exp(-0.5 * (dt / 60_000));
+    this.satiety *= Math.exp(-SATIETY_DECAY_PER_MIN * (dt / 60_000));
   }
+
+  hunger(): number {
+    return 1 - this.satiety;
+  }
+
+  snapshot(): RatMemory {
+    return {};
+  }
+
+  restore(): void {}
 }
 
 class KellerRat implements RatModel {
   private readonly p: typeof DEFAULTS & RatConfig;
-  private strength = 0.1;
+  private strengths: Record<'on' | 'off', number> = { on: 0.1, off: 0.1 };
+  private light: 'on' | 'off' = 'on';
+  private satiety = 0;
 
   constructor(readonly config: RatConfig) {
     this.p = { ...DEFAULTS, ...config };
@@ -116,26 +154,48 @@ class KellerRat implements RatModel {
   }
 
   responseProbability(dt: number, rng: Rng): number {
-    const rate = this.p.baseRate + this.p.maxRate * this.strength;
+    const rate = this.p.baseRate + this.p.maxRate * this.strengths[this.light];
     return clamp01(rate * (dt / 60_000) * (1 + this.p.noise * (2 * rng() - 1)));
   }
 
   onReinforcer(): void {
-    this.strength += this.p.learnRate * (1 - this.strength);
+    const value = Math.max(MIN_REINFORCER_VALUE, 1 - this.satiety);
+    const s = this.strengths[this.light];
+    this.strengths[this.light] = s + this.p.learnRate * value * (1 - s);
+    this.satiety = Math.min(1, this.satiety + SATIETY_PER_REINFORCER);
   }
 
   onPunishment(): void {
-    this.strength *= 1 - this.p.punishGain;
+    this.strengths[this.light] *= 1 - this.p.punishGain;
+  }
+
+  setStimulus(on: boolean): void {
+    this.light = on ? 'on' : 'off';
   }
 
   advance(dt: number): void {
-    this.strength *= Math.exp(-this.p.forgetPerMin * (dt / 60_000));
+    const decay = Math.exp(-this.p.forgetPerMin * (dt / 60_000));
+    this.strengths.on *= decay;
+    this.strengths.off *= decay;
+    this.satiety *= Math.exp(-SATIETY_DECAY_PER_MIN * (dt / 60_000));
+  }
+
+  hunger(): number {
+    return 1 - this.satiety;
+  }
+
+  snapshot(): RatMemory {
+    return { strengths: { ...this.strengths } };
+  }
+
+  restore(memory: RatMemory): void {
+    if (memory.strengths) this.strengths = { ...memory.strengths };
   }
 }
 
 /**
- * Com repertório ligado, o rato só pressiona quando está na barra e escolheu o comportamento
- * `press`. A taxa do modelo continua valendo nesse caso; o repertório decide quando ela pode agir.
+ * Com repertório ligado, o rato só pressiona quando está na barra. Tocar a barra de perto às vezes
+ * conta como resposta; pressionar de fato depende do peso do comportamento `press`.
  */
 class ShapedRat implements RatModel {
   private readonly rep: Repertoire;
@@ -155,7 +215,6 @@ class ShapedRat implements RatModel {
     this.rep.step(dt, rng);
     if (this.rep.pos < BAR_POS) return 0;
     const base = this.inner.responseProbability(dt, rng);
-    // tocar a barra de perto às vezes empurra a alavanca; pressionar de fato depende do peso da pressão
     if (this.rep.behavior === 'touch') return base * 0.5;
     if (this.rep.behavior === 'press') return base * Math.min(1, this.rep.weight('press') / 0.2);
     return 0;
@@ -171,12 +230,29 @@ class ShapedRat implements RatModel {
     this.rep.punish(t);
   }
 
+  setStimulus(on: boolean): void {
+    this.inner.setStimulus?.(on);
+  }
+
   advance(dt: number): void {
     this.inner.advance(dt);
   }
 
   behaviorState(): { behavior: Behavior; pos: number } {
     return { behavior: this.rep.behavior, pos: this.rep.pos };
+  }
+
+  hunger(): number {
+    return this.inner.hunger();
+  }
+
+  snapshot(): RatMemory {
+    return { ...this.inner.snapshot(), weights: this.rep.export() };
+  }
+
+  restore(memory: RatMemory): void {
+    this.inner.restore(memory);
+    if (memory.weights) this.rep.import(memory.weights);
   }
 }
 

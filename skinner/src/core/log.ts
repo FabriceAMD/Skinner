@@ -8,6 +8,7 @@ export type EventType =
   | 'reinforcer'
   | 'punishment'
   | 'behavior'
+  | 'stimulus'
   | 'note';
 
 export interface LogEvent {

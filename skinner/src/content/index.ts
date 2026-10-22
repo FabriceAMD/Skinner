@@ -21,6 +21,7 @@ export interface Lesson {
   curriculo?: Stage[];
   punicao?: ScheduleSpec[];
   repertorio?: boolean;
+  luz?: { ciclo: number };
   criterio?: Criterio;
   perguntas: string[];
 }
@@ -66,6 +67,7 @@ export const LESSONS: Lesson[] = (lessonsRaw as Array<Record<string, unknown>>).
     : undefined,
   punicao: raw.punicao ? (raw.punicao as unknown[]).map(parseSpec) : undefined,
   repertorio: raw.repertorio === true,
+  luz: raw.luz as { ciclo: number } | undefined,
   criterio: raw.criterio as Criterio | undefined,
   perguntas: raw.perguntas as string[],
 }));

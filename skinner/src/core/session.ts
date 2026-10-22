@@ -1,5 +1,5 @@
 import { EventLog } from './log';
-import { createRat, type RatConfig, type RatModel } from './rats';
+import { createRat, type RatConfig, type RatMemory, type RatModel } from './rats';
 import { mulberry32, type Rng } from './rng';
 import { createSchedule, Curriculum, formatSpec, type Schedule, type ScheduleSpec, type Stage } from './schedules';
 
@@ -25,6 +25,10 @@ export interface SessionConfig {
   punish?: ScheduleSpec[];
   /** Se informado, controla a alavanca 0 com critério de domínio. */
   curriculum?: Stage[];
+  /** Luz de estímulo: acesa e apagada, alternando a cada `ciclo` ms. Reforço automático só com a luz acesa. */
+  luz?: { ciclo: number };
+  /** O que o rato lembra de sessões anteriores. */
+  memoria?: RatMemory;
   actions?: StudentAction[];
 }
 
@@ -42,6 +46,7 @@ export class Session {
   private now = 0;
   private finished = false;
   private lastBehavior: string | undefined;
+  private lightOn = true;
 
   constructor(private readonly cfg: SessionConfig) {
     if (cfg.levers.length === 0) throw new Error('É preciso ao menos uma alavanca');
@@ -54,6 +59,8 @@ export class Session {
     const punish = cfg.punish ?? specs.map(() => ({ kind: 'EXT' }) as ScheduleSpec);
     this.punishers = specs.map((_, i) => createSchedule(punish[i] ?? { kind: 'EXT' }));
     this.scripted = [...(cfg.actions ?? [])].sort((a, b) => a.t - b.t);
+    if (cfg.memoria) this.rat.restore(cfg.memoria);
+    this.rat.setStimulus?.(true);
 
     this.log.add({ t: 0, type: 'session_start', text: `rato=${cfg.rat.id} semente=${cfg.seed}` });
     specs.forEach((spec, lever) => this.log.add({ t: 0, type: 'schedule_set', lever, spec: formatSpec(spec), text: 'inicial' }));
@@ -73,6 +80,20 @@ export class Session {
   /** Comportamento e posição do rato agora, se o repertório estiver ligado. */
   get ratState(): { behavior: string; pos: number } | undefined {
     return this.rat.behaviorState?.();
+  }
+
+  /** Memória do rato para a próxima sessão. */
+  get memory(): RatMemory {
+    return this.rat.snapshot();
+  }
+
+  /** Fome do rato, de 0 a 1. */
+  get hunger(): number {
+    return this.rat.hunger();
+  }
+
+  get light(): boolean {
+    return this.lightOn;
   }
 
   get ended(): boolean {
@@ -124,6 +145,15 @@ export class Session {
     this.finished = true;
   }
 
+  private updateLight(now: number): void {
+    if (!this.cfg.luz) return;
+    const on = Math.floor(now / this.cfg.luz.ciclo) % 2 === 0;
+    if (on === this.lightOn) return;
+    this.lightOn = on;
+    this.rat.setStimulus?.(on);
+    this.log.add({ t: now, type: 'stimulus', text: on ? 'luz acesa' : 'luz apagada' });
+  }
+
   private logBehavior(now: number): void {
     const state = this.rat.behaviorState?.();
     if (state && state.behavior !== this.lastBehavior) {
@@ -145,6 +175,7 @@ export class Session {
 
   private tick(): void {
     const { rng, rat, schedules, log, now } = this;
+    this.updateLight(now);
     const lever = rat.chooseLever(schedules.length, rng);
     const responded = rng() < rat.responseProbability(this.dt, rng);
     this.logBehavior(now);
@@ -159,6 +190,8 @@ export class Session {
 
     schedules.forEach((schedule, i) => {
       if (!schedule.step(now, responded && i === lever, rng)) return;
+      // na luz apagada (S−) o reforço automático não é entregue
+      if (!this.lightOn) return;
       log.add({ t: now, type: 'reinforcer', lever: i, source: 'auto' });
       rat.onReinforcer(i, now);
       if (i === 0 && this.curriculum?.onReinforcer()) {

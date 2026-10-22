@@ -27,5 +27,11 @@
   "modelagem": [
     "Aproximou. O rato fingiu que sempre quis chegar até a barra.",
     "Tocou a barra. Ninguém combinou isso, mas está registrado."
+  ],
+  "luz_acesa": [
+    "A luz acendeu. Alguém na sala ficou um pouco mais atento."
+  ],
+  "luz_apagada": [
+    "A luz apagou. O rato reavalia o escritório com calma."
   ]
 }

@@ -49,7 +49,8 @@ describe('sessão', () => {
   it('o rato molar responde mais quando o reforço é mais frequente', () => {
     const rich = runSession(base({ rat: MOLAR, durationMs: 600_000, levers: [{ kind: 'VI', ms: 2000 }] }));
     const lean = runSession(base({ rat: MOLAR, durationMs: 600_000, levers: [{ kind: 'VI', ms: 60_000 }] }));
-    expect(rich.ofType('response').length).toBeGreaterThan(lean.ofType('response').length * 1.5);
+    // saciedade achata o ganho: reforço abundante ainda aumenta a taxa, mas menos do que sem saciedade
+    expect(rich.ofType('response').length).toBeGreaterThan(lean.ofType('response').length * 1.2);
   });
 
   it('lei da igualação: com VI 30 s e VI 90 s, o rato aloca cerca de 75% das respostas à alavanca mais rica', () => {

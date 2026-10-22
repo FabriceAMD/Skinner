@@ -46,6 +46,17 @@ export class Repertoire {
     return this.weights[b];
   }
 
+  export(): Partial<Record<Behavior, number>> {
+    return { ...this.weights };
+  }
+
+  import(saved: Partial<Record<Behavior, number>>): void {
+    for (const b of Object.keys(saved) as Behavior[]) {
+      const w = saved[b];
+      if (w !== undefined) this.weights[b] = w;
+    }
+  }
+
   /** Um passo de simulação: pode trocar o comportamento e move o rato. */
   step(dt: number, rng: Rng): Behavior {
     this.now += dt;
