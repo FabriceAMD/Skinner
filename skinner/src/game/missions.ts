@@ -4,26 +4,36 @@ import type { ScheduleSpec } from '../core/schedules';
 export interface Progress {
   value: number;
   goal: number;
-  text: string;
+}
+
+/** Uma etapa de modelagem: os comportamentos que valem reforço agora. */
+export interface Etapa {
+  icone: string;
+  alvos: Behavior[];
+  /** Também vale qualquer comportamento com o rato a partir desta posição (0 a 1) da caixa. */
+  zona?: number;
 }
 
 export interface Mission {
   id: string;
+  /** Ícone que identifica a missão sem precisar ler. */
+  icone: string;
   titulo: string;
-  resumo: string;
-  /** Dicas curtas, mostradas uma de cada vez durante a missão. */
-  dicas: string[];
-  /** Comportamentos que valem ponto quando reforçados com bom timing. */
-  alvos: Behavior[];
-  /** O estudante pode clicar? Nas missões automáticas, quem reforça é o alimentador. */
+  /** Uma frase, para quem quiser ler, mostrada ao concluir. */
+  licao: string;
   cliqueManual: boolean;
   esquema: ScheduleSpec | null;
   luz: number | null;
-  /** Segundos de rato para 3 e 2 estrelas. */
+  /** Segundos de rato por segundo real. Fases automáticas correm rápido. */
+  velocidade: number;
+  /** Modelagem: o critério sobe sozinho a cada 3 acertos. */
+  etapas?: Etapa[];
+  alvos: Behavior[];
+  /** Quando o botão acende: rato pronto para o clique ou fazendo o comportamento-alvo. */
+  deixa: 'pronto' | 'alvo' | null;
+  /** Segundos reais para 3 e 2 estrelas. */
   estrelas: [number, number];
   progresso(sim: Sim, inicio: number): Progress;
-  /** Uma frase sobre o que aconteceu, mostrada ao concluir. */
-  licao: string;
 }
 
 const pressesSince = (sim: Sim, from: number): number => sim.events.filter(e => e.kind === 'press' && e.t >= from).length;
@@ -31,124 +41,120 @@ const pressesSince = (sim: Sim, from: number): number => sim.events.filter(e => 
 export const MISSIONS: Mission[] = [
   {
     id: 'clique',
-    titulo: 'Carregar o clique',
-    resumo: 'Ensine que o clique anuncia comida.',
-    dicas: [
-      'Clique quando ele não estiver comendo.',
-      'Espere ele comer antes do próximo clique.',
-      'Quando ele correr para o comedouro ao ouvir o clique, o clique virou reforço.',
-    ],
-    alvos: [],
+    icone: '🔔',
+    titulo: 'Clique = comida',
+    licao: 'O clique virou reforçador condicionado: agora ele reforça na hora, sem esperar a comida.',
     cliqueManual: true,
     esquema: null,
     luz: null,
-    estrelas: [90, 200],
-    progresso: sim => ({
-      value: Math.min(sim.orientStreak, 5),
-      goal: 5,
-      text: `${Math.min(sim.orientStreak, 5)} de 5 corridas seguidas ao comedouro depois do clique`,
-    }),
-    licao: 'O clique virou reforçador condicionado: agora ele reforça na hora, sem esperar a comida.',
+    velocidade: 1.5,
+    alvos: [],
+    deixa: 'pronto',
+    estrelas: [30, 60],
+    // termina quando ele corre ao comedouro ao ouvir o clique e o clique já vale como reforço
+    progresso: sim => ({ value: Math.min(sim.orientStreak, 4) * (sim.vMag >= 0.6 ? 1 : 0.75), goal: 4 }),
   },
   {
     id: 'modelagem',
-    titulo: 'Modelagem até a barra',
-    resumo: 'Reforce aproximações até ele pressionar a barra.',
-    dicas: [
-      'Comece clicando quando ele for em direção à barra.',
-      'Depois, só quando cheirar ou apoiar na barra.',
-      'No fim, só quando a barra descer.',
-      'Clique na hora: o que ele faz no instante do clique é o que fica.',
-    ],
-    alvos: ['aproximar', 'cheirarBarra', 'apoiar', 'pressionar'],
+    icone: '🎯',
+    titulo: 'Modelagem',
+    licao: 'Você modelou por aproximações sucessivas: reforçou passos cada vez mais perto da pressão na barra.',
     cliqueManual: true,
     esquema: null,
     luz: null,
-    estrelas: [180, 360],
-    progresso: sim => {
-      const n = Math.min(sim.pressesSince(60), 3);
-      return { value: n, goal: 3, text: `${n} de 3 pressões no último minuto` };
+    velocidade: 2,
+    etapas: [
+      { icone: '➡️', alvos: ['aproximar', 'cheirarBarra', 'apoiar', 'pressionar'], zona: 0.55 },
+      { icone: '👃', alvos: ['cheirarBarra', 'apoiar', 'pressionar'] },
+      { icone: '🐾', alvos: ['apoiar', 'pressionar'] },
+      { icone: '⬇️', alvos: ['pressionar'] },
+    ],
+    alvos: [],
+    deixa: 'alvo',
+    estrelas: [75, 120],
+    // termina quando o estudante reforça 3 pressões na hora certa ou quando o rato já pressiona 3 vezes por minuto
+    progresso: (sim, inicio) => {
+      const reforcadas = sim.reports.filter(r => r.t >= inicio && r.reinforced === 'pressionar' && r.points > 0).length;
+      const porMinuto = sim.events.filter(e => e.kind === 'press' && e.t >= Math.max(inicio, sim.t - 60)).length;
+      return { value: Math.min(Math.max(reforcadas, porMinuto), 3), goal: 3 };
     },
-    licao: 'Você modelou por aproximações sucessivas: reforçou passos cada vez mais perto da resposta-alvo.',
   },
   {
     id: 'continuo',
+    icone: '⚙️',
     titulo: 'Reforço contínuo',
-    resumo: 'Agora o alimentador reforça cada pressão sozinho.',
-    dicas: ['Só observe. Cada pressão gera clique e pelota.', 'Veja a curva subir no registro.'],
-    alvos: [],
+    licao: 'Em reforço contínuo (CRF), cada resposta é reforçada.',
     cliqueManual: false,
     esquema: { kind: 'FR', n: 1 },
     luz: null,
-    estrelas: [90, 180],
-    progresso: (sim, inicio) => {
-      const n = Math.min(pressesSince(sim, inicio), 30);
-      return { value: n, goal: 30, text: `${n} de 30 pressões` };
-    },
-    licao: 'Em reforço contínuo (CRF), cada resposta é reforçada. O comportamento se mantém, mas o rato também se sacia rápido.',
+    velocidade: 8,
+    alvos: [],
+    deixa: null,
+    estrelas: [Infinity, Infinity],
+    progresso: (sim, inicio) => ({ value: Math.min(pressesSince(sim, inicio), 10), goal: 10 }),
   },
   {
     id: 'razao',
+    icone: '🔁',
     titulo: 'Razão fixa 5',
-    resumo: 'Reforço a cada 5 pressões. Veja a taxa subir.',
-    dicas: ['Compare a inclinação do registro com a do reforço contínuo.', 'Razão alta, taxa alta.'],
-    alvos: [],
+    licao: 'Em razão fixa, quanto mais rápido ele responde, mais reforço ganha. A taxa sobe.',
     cliqueManual: false,
     esquema: { kind: 'FR', n: 5 },
     luz: null,
-    estrelas: [120, 240],
-    progresso: (sim, inicio) => {
-      const n = Math.min(pressesSince(sim, inicio), 80);
-      return { value: n, goal: 80, text: `${n} de 80 pressões` };
-    },
-    licao: 'Em razão fixa, o reforço depende do número de respostas: quanto mais rápido, mais reforço. A taxa sobe.',
+    velocidade: 8,
+    alvos: [],
+    deixa: null,
+    estrelas: [Infinity, Infinity],
+    progresso: (sim, inicio) => ({ value: Math.min(pressesSince(sim, inicio), 30), goal: 30 }),
   },
   {
     id: 'extincao',
+    icone: '🚫',
     titulo: 'Extinção',
-    resumo: 'Desligue o reforço e observe.',
-    dicas: [
-      'Não clique. Observe o que acontece logo depois.',
-      'Primeiro vem um surto: ele pressiona mais.',
-      'Depois a taxa cai.',
-    ],
-    alvos: [],
+    licao: 'Sem reforço, o comportamento cai, mas primeiro vem o surto de extinção.',
     cliqueManual: false,
     esquema: null,
     luz: null,
-    estrelas: [180, 180],
-    progresso: (sim, inicio) => {
-      const s = Math.min(Math.floor(sim.t - inicio), 180);
-      return { value: s, goal: 180, text: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} de 3:00 de observação` };
-    },
-    licao: 'Sem reforço, o comportamento cai, mas não de uma vez: primeiro vem o surto de extinção.',
+    velocidade: 8,
+    alvos: [],
+    deixa: null,
+    estrelas: [Infinity, Infinity],
+    progresso: (sim, inicio) => ({ value: Math.min(sim.t - inicio, 120), goal: 120 }),
   },
   {
     id: 'luz',
+    icone: '💡',
     titulo: 'Luz que manda',
-    resumo: 'Com luz acesa, há reforço. Apagada, não.',
-    dicas: [
-      'Só observe. A luz troca a cada 20 s.',
-      'Aos poucos ele pressiona mais com a luz acesa.',
-      'A luz virou estímulo discriminativo (S+).',
-    ],
-    alvos: [],
+    licao: 'A luz virou estímulo discriminativo: ele pressiona mais quando ela está acesa.',
     cliqueManual: false,
     esquema: { kind: 'VI', ms: 5000 },
     luz: 20,
-    estrelas: [300, 600],
-    progresso: sim => {
-      const { on, off } = sim.pressesByLight(sim.t - 120);
-      const ratio = off === 0 ? on : on / off;
+    velocidade: 10,
+    alvos: [],
+    deixa: null,
+    estrelas: [Infinity, Infinity],
+    progresso: (sim, inicio) => {
+      // só conta pressões desta fase, depois de 1 min para o rato começar a discriminar
+      if (sim.t - inicio < 120) return { value: ((sim.t - inicio) / 120) * 0.5, goal: 1 };
+      const { on, off } = sim.pressesByLight(Math.max(inicio + 60, sim.t - 120));
       const ok = on >= 10 && on >= 2 * off;
-      return {
-        value: ok ? 1 : Math.min(0.95, ratio / 2),
-        goal: 1,
-        text: `últimos 2 min: ${on} pressões com luz, ${off} sem luz (meta: o dobro com luz)`,
-      };
+      return { value: ok ? 1 : Math.min(0.95, (off === 0 ? on : on / off) / 2), goal: 1 };
     },
-    licao: 'O rato discriminou: a luz sinaliza quando a pressão é reforçada. Isso é controle de estímulos.',
   },
 ];
 
-export const FREE_MODE = 'livre';
+/** Laboratório livre: sem meta, clique liberado, alimentador e luz configuráveis na tela. */
+export const LIVRE: Mission = {
+  id: 'livre',
+  icone: '🧪',
+  titulo: 'Laboratório livre',
+  licao: '',
+  cliqueManual: true,
+  esquema: null,
+  luz: null,
+  velocidade: 1,
+  alvos: [],
+  deixa: null,
+  estrelas: [Infinity, Infinity],
+  progresso: () => ({ value: 0, goal: 1 }),
+};

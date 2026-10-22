@@ -8,14 +8,22 @@ Inspirado no **Sniffy, the Virtual Rat** (treino de comedouro, modelagem, regist
 
 ## Missões
 
-1. **Carregar o clique**: o clique vira reforçador condicionado (treino de comedouro).
-2. **Modelagem até a barra**: aproximações sucessivas até a pressão.
-3. **Reforço contínuo**: o alimentador reforça cada pressão.
-4. **Razão fixa 5**: a taxa sobe.
-5. **Extinção**: surto de extinção e depois queda.
-6. **Luz que manda**: discriminação S+/S− com intervalo variável na luz acesa.
+Um toque em **Jogar** e o jogo segue sozinho de fase em fase. O botão 🔔 acende na hora boa de clicar,
+fica cinza enquanto há pelota no comedouro e pulsa (e vibra) se a pessoa demora.
+
+1. 🔔 **Clique = comida**: o clique vira reforçador condicionado.
+2. 🎯 **Modelagem**: etapas ➡️ 👃 🐾 ⬇️. O critério sobe a cada 2 acertos e desce se ficar 45 s sem acerto.
+3. ⚙️ **Reforço contínuo**, 4. 🔁 **Razão fixa 5**, 5. 🚫 **Extinção**, 6. 💡 **Luz que manda**: fases
+   automáticas com tempo acelerado e registro cumulativo no lugar do botão.
 
 E um **laboratório livre** com esquemas (CRF, FR, VR, VI, FI, extinção) e luz.
+
+## Teste com jogador simulado (`tests/persona`)
+
+Um jogador de 20 e poucos anos no celular, que não lê instruções e para em 5 minutos: toca quando o botão
+acende, com tempo de reação humano, às vezes perde a deixa e às vezes toca por tédio. Três perfis (atento,
+distraído, ansioso), 10 ratos cada. O teste exige que a maioria complete o ciclo inteiro e que a mediana
+fique abaixo de 5 minutos.
 
 ## Como o rato funciona (`src/game/sim.ts`)
 

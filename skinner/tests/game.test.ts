@@ -72,9 +72,12 @@ describe('simulação do rato', () => {
     expect(tShape).toBeLessThan(600);
   });
 
-  it('razão fixa produz taxa alta; extinção tem surto e depois queda', () => {
+  it('razão fixa produz taxa maior que reforço contínuo; extinção tem surto e depois queda', () => {
     const sim = new Sim(2);
     trainAndShape(sim);
+    sim.setSchedule({ kind: 'FR', n: 1 });
+    run(sim, 120);
+    const crf = sim.pressesSince(60);
     sim.setSchedule({ kind: 'FR', n: 5 });
     run(sim, 180);
     const fr5 = sim.pressesSince(60);
@@ -83,7 +86,8 @@ describe('simulação do rato', () => {
     const firstMinute = sim.pressesSince(60);
     run(sim, 180);
     const thirdMinute = sim.pressesSince(60);
-    expect(fr5).toBeGreaterThan(30);
+    // razão fixa: responder mais rápido rende mais reforço, então a taxa passa a do reforço contínuo
+    expect(fr5).toBeGreaterThan(crf);
     expect(firstMinute).toBeGreaterThan(10);
     expect(thirdMinute).toBeLessThan(firstMinute / 2);
   });

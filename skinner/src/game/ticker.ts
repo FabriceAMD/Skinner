@@ -25,6 +25,15 @@ export const FRASES = [
   'análise funcional',
   'AC',
   'PCDC',
+  'Programação de Condições para o Desenvolvimento de Comportamentos',
+  'Carolina Bori e a PCDC',
+  'Nádia Kienen',
+  'Olga Kubo',
+  'Botomé',
+  'Helder',
+  'comportamento-objetivo',
+  'programação de ensino',
+  'aprendizagem sem erro',
   'o rato tem sempre razão',
 ];
 

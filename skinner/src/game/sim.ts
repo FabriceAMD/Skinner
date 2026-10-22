@@ -68,7 +68,7 @@ const BASE: Record<Choice, number> = {
 const AT_BAR: Choice[] = ['cheirarBarra', 'apoiar', 'pressionar'];
 /** Cadeia de modelagem: reforçar um elo também deixa o próximo um pouco mais provável (indução). */
 const CHAIN: Choice[] = ['aproximar', 'cheirarBarra', 'apoiar', 'pressionar'];
-const INDUCTION = 0.5;
+const INDUCTION = 0.7;
 const DURATION: Record<Behavior, number> = {
   explorar: 4.0,
   farejar: 2.8,
@@ -94,8 +94,8 @@ const MAX_W = 8;
 const TOTAL_CAP = 14;
 const MIN_W = 0.02;
 const PRESS_EVERY = 0.55;
-/** O rato precisa comer até esse tempo depois do clique para contar como orientação ao comedouro. */
-const ORIENT_WINDOW = 3;
+/** Orientação que não termina em comida nesse tempo (segundos de rato) deixa de contar. */
+const ORIENT_WINDOW = 8;
 const SATIETY_PER_PELLET = 0.02;
 const EXTINCTION = 0.12;
 /** Quanto o reforço numa luz vale na outra. */
@@ -165,6 +165,9 @@ export class Sim {
   private lastClick = -Infinity;
   private orientPending: number | null = null;
   private schedule: Schedule | null = null;
+  /** Preferência por lugar: onde o rato costuma ganhar reforço, e o quanto isso puxa a exploração. */
+  private favX = 0.5;
+  private placeStrength = 0;
 
   constructor(seed: number, brain: Brain = freshBrain(), learn = 1) {
     this.rng = mulberry32(seed);
@@ -221,6 +224,8 @@ export class Sim {
     const delay = this.behavior === reinforced ? 0 : this.t - this.lastActive[reinforced];
     const value = this.brain.vMag * this.value();
     this.reinforce(value);
+    this.favX += 0.4 * (this.x - this.favX);
+    this.placeStrength = Math.min(0.7, this.placeStrength + 0.15 * value);
 
     let quality: Quality;
     if (this.brain.vMag < 0.3) quality = 'sem-efeito';
@@ -232,10 +237,18 @@ export class Sim {
     const report: ClickReport = { t: this.t, reinforced, delay, quality, points, source };
     this.reports.push(report);
 
-    // rato que entende o clique vai direto ao comedouro
-    this.orientPending = this.t;
-    // som novo chama atenção mesmo antes de significar comida (reflexo de orientação)
-    if (this.behavior !== 'comer' && this.rng() < Math.max(0.25, this.brain.vMag)) this.start('comedouro');
+    // rato que entende o clique vai direto ao comedouro; som novo chama atenção mesmo antes (reflexo de orientação).
+    // A sequência conta orientações: correr ao comedouro ao ouvir o clique, não importa de onde.
+    // clique durante a comida não conta nem a favor nem contra: o rato já está no comedouro
+    if (this.behavior !== 'comer') {
+      if (this.rng() < Math.max(0.25, this.brain.vMag)) {
+        this.start('comedouro');
+        this.orientPending = this.t;
+      } else {
+        this.orientPending = null;
+        this.orientStreak = 0;
+      }
+    }
     return report;
   }
 
@@ -248,6 +261,7 @@ export class Sim {
     this.lastActive[this.behavior] = this.t;
     this.brain.hunger = Math.min(1, this.brain.hunger + HUNGER_RECOVERY * dt);
     this.frustration *= Math.exp(-dt / 6);
+    this.placeStrength *= Math.exp(-dt / 120);
     this.drift(dt);
 
     if (this.orientPending !== null && this.t - this.orientPending > ORIENT_WINDOW) {
@@ -457,14 +471,19 @@ export class Sim {
     this.behavior = b;
     const jitter = 0.6 + this.rng() * 0.8;
     this.behaviorEnd = this.t + DURATION[b] * jitter;
-    if (b === 'explorar') this.targetX = 0.08 + this.rng() * 0.84;
+    if (b === 'explorar') {
+      this.targetX =
+        this.rng() < this.placeStrength
+          ? Math.min(0.92, Math.max(0.08, this.favX + (this.rng() - 0.5) * 0.2))
+          : 0.08 + this.rng() * 0.84;
+    }
     else if (b === 'comedouro') this.targetX = FEEDER_X;
     else if (b === 'aproximar') {
       this.targetX = BAR_X;
       this.behaviorEnd = this.t + 30;
     }
     if (b === 'pressionar') this.nextPress = this.t + 0.2;
-    else if (b === 'apoiar') this.nextPress = this.rng() < 0.2 ? this.t + 0.4 : Infinity;
+    else if (b === 'apoiar') this.nextPress = this.rng() < 0.5 ? this.t + 0.4 : Infinity;
     else this.nextPress = Infinity;
   }
 
