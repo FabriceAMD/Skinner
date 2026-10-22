@@ -1,0 +1,23 @@
+{
+  "reforco_auto": [
+    "Pellet entregue. A equipe comemorou discretamente, num e-mail de três parágrafos.",
+    "Reforço caiu. O rato fingiu que não viu, que é o mais perto de uma avaliação de desempenho que este andar tem.",
+    "Reforço. A reunião de hoje foi remarcada para depois dele.",
+    "Mais um reforço. A planilha agradece; a planilha sempre agradece."
+  ],
+  "reforco_manual": [
+    "Você entregou o reforço à mão. Registrado com carinho, na coluna de quem fez o quê.",
+    "Reforço entregue por você. O rato ainda não sabe se isso conta como mérito."
+  ],
+  "mudanca_esquema": [
+    "Novo esquema. Ninguém avisou o rato, que está se adaptando como sempre: em silêncio e com atraso.",
+    "Mudança registrada. O rato leu o memorando e continua responsável pelo que fez antes dele."
+  ],
+  "fim": [
+    "Sessão encerrada. O caderno não se preenche sozinho.",
+    "Fim da jornada. Os dados já estão na planilha, mesmo que a análise ainda não."
+  ],
+  "sem_reforco": [
+    "Nenhum reforço ainda. O rato está trabalhando num relatório sobre o silêncio."
+  ]
+}

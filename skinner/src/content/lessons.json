@@ -1,0 +1,43 @@
+[
+  {
+    "id": "modelagem",
+    "titulo": "Modelagem com critério",
+    "rato": "fred-keller",
+    "duracaoMin": 15,
+    "objetivo": "Observe quando o rato avança de etapa. O critério conta reforços, não tempo. Antes de mudar qualquer coisa, escreva o que você acha que vai acontecer.",
+    "alavancas": [{ "kind": "FR", "n": 1 }],
+    "curriculo": [
+      { "spec": { "kind": "FR", "n": 1 }, "minReinforcers": 5 },
+      { "spec": { "kind": "FR", "n": 3 }, "minReinforcers": 5 },
+      { "spec": { "kind": "FR", "n": 5 }, "minReinforcers": 5 }
+    ],
+    "perguntas": [
+      "Quantos reforços foram necessários para avançar de etapa?",
+      "A taxa de resposta acompanha a etapa ou o número de reforços?"
+    ]
+  },
+  {
+    "id": "igualacao",
+    "titulo": "Duas alavancas, dois intervalos",
+    "rato": "molar",
+    "duracaoMin": 20,
+    "objetivo": "Duas alavancas com intervalos variáveis diferentes. Observe em qual o rato responde mais e pense por que, em termos de reforço recebido.",
+    "alavancas": [{ "kind": "VI", "ms": 30000 }, { "kind": "VI", "ms": 90000 }],
+    "perguntas": [
+      "Qual alavanca recebe mais respostas?",
+      "A proporção de respostas acompanha a proporção de reforços das duas?"
+    ]
+  },
+  {
+    "id": "extincao",
+    "titulo": "Extinção depois de reforço",
+    "rato": "ana-carolina-ramos",
+    "duracaoMin": 20,
+    "objetivo": "Deixe o rato trabalhar em FR 5 por alguns minutos. Depois, troque o esquema por EXT. Registre o que acontece com a taxa nos minutos seguintes.",
+    "alavancas": [{ "kind": "FR", "n": 5 }],
+    "perguntas": [
+      "A taxa cai logo depois da mudança ou sobe antes de cair?",
+      "Quanto tempo leva para a taxa voltar perto da linha de base?"
+    ]
+  }
+]
