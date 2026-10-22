@@ -7,7 +7,11 @@ export function ratSvg(visual: RatEntry['visual'], pose: RatPose): string {
   const hair = visual.cabelo
     ? `<path d="M30 36 q4 -16 18 -14 q-2 6 -4 10 q8 -4 12 2 q-10 4 -26 2 z" fill="${visual.cabelo}"/>`
     : '';
-  const tie = visual.acessorio === 'gravata' ? `<path d="M64 80 l-4 5 l4 12 l4 -12 z" fill="#2c3e50"/>` : '';
+  // gravata: nó pequeno e corpo comprido, bem visível sobre o peito
+  const tie =
+    visual.acessorio === 'gravata'
+      ? `<path d="M60 74 h9 l-1.5 5 h-6 z" fill="#b91c1c"/><path d="M60.5 79 h8 l3 22 l-7 4 l-7 -4 z" fill="#b91c1c"/>`
+      : '';
   const glasses =
     visual.acessorio === 'oculos'
       ? `<circle cx="27" cy="54" r="4" fill="none" stroke="#333" stroke-width="1.5"/><circle cx="38" cy="54" r="4" fill="none" stroke="#333" stroke-width="1.5"/>`

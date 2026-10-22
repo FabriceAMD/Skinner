@@ -52,20 +52,20 @@ describe('punição', () => {
 });
 
 describe('práticas de método', () => {
-  it('reconhece anotação feita antes da primeira mudança', () => {
+  it('reconhece mudança de esquema, reforço à mão e tempo de sessão', () => {
     const log = runSession({
       seed: 4,
       durationMs: 6 * 60_000,
       rat: MOLAR,
       levers: [{ kind: 'FR', n: 3 }],
       actions: [
-        { t: 10_000, kind: 'note', text: 'acho que é FR 3' },
+        { t: 30_000, kind: 'deliver', lever: 0 },
         { t: 120_000, kind: 'set_schedule', lever: 0, spec: { kind: 'VI', ms: 20_000 } },
       ],
     });
     const checks = methodChecks(log);
     expect(checks[0].ok).toBe(true);
-    expect(checks[1].ok).toBe(true);
+    expect(checks[2].ok).toBe(true);
     expect(checks[3].ok).toBe(true);
   });
 
@@ -77,6 +77,19 @@ describe('práticas de método', () => {
       levers: [{ kind: 'FR', n: 3 }],
       actions: [{ t: 60_000, kind: 'set_punish', lever: 0, spec: { kind: 'FR', n: 2 } }],
     });
-    expect(methodChecks(log)[1].ok).toBe(false);
+    expect(methodChecks(log)[0].ok).toBe(false);
+    expect(methodChecks(log)[1].ok).toBe(true);
+  });
+
+  it('mudanças de esquema geram anotações automáticas', () => {
+    const log = runSession({
+      seed: 4,
+      durationMs: 2 * 60_000,
+      rat: MOLAR,
+      levers: [{ kind: 'FR', n: 3 }],
+      actions: [{ t: 60_000, kind: 'set_schedule', lever: 0, spec: { kind: 'VI', ms: 20_000 } }],
+    });
+    const auto = log.ofType('note').filter(e => e.auto);
+    expect(auto.map(e => e.text)).toEqual(['Alavanca 1: esquema VI 20s']);
   });
 });

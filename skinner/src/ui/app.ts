@@ -21,7 +21,7 @@ const MIN = 60_000;
 /** Tempo acelerado é o padrão: a aula inteira cabe em poucos minutos reais. */
 const SPEEDS = [
   { label: '1×', value: 1 },
-  { label: '10× acelerado', value: 10 },
+  { label: '10×', value: 10 },
   { label: '60×', value: 60 },
 ];
 const DEFAULT_SPEED = 1;
@@ -116,7 +116,7 @@ class App {
   private lesson: Lesson | null = null;
   private rat: RatEntry = RATS[0];
   private levers: ScheduleSpec[] = [];
-  private durationMs = 15 * MIN;
+  private durationMs = 10 * MIN;
   private speedIndex = DEFAULT_SPEED;
   private playing = true;
   private lastTs: number | null = null;
@@ -141,9 +141,9 @@ class App {
     const memory = loadMemory(rat.id);
     const introSeen = store.get(INTRO_KEY) === '1';
 
-    const lessonCards = [
+    const cards = [
       `<button class="lesson-card ${this.lessonId === '' ? 'selected' : ''}" data-lesson="">
-         <strong>Laboratório livre</strong><span>Escolha o rato e as alavancas. Ninguém corrige você.</span>
+         <strong>Livre</strong><span>Sem missão. Explore.</span>
        </button>`,
       ...LESSONS.map(
         l => `<button class="lesson-card ${this.lessonId === l.id ? 'selected' : ''}" data-lesson="${l.id}">
@@ -158,61 +158,57 @@ class App {
 
     this.root.innerHTML = `
       <header class="hero">
-        <div>
-          <h1>Caixa Skinner</h1>
-          <p class="tagline">Um laboratório de análise do comportamento, no seu bolso. Você opera a caixa; o rato aprende com as consequências, inclusive as suas.</p>
-        </div>
-        <span class="pill">⏩ tempo acelerado · 1 min real = 10 min de rato</span>
+        <h1>Caixa Skinner</h1>
+        <p class="tagline">Você opera a caixa. O rato aprende com as consequências, inclusive as suas.</p>
+        <span class="pill">⏩ tempo acelerado</span>
       </header>
 
       ${introSeen ? '' : `
       <section class="card intro">
-        <h2>Como funciona</h2>
+        <p><strong>Em 3 passos:</strong></p>
         <ol>
-          <li><strong>Escolha uma aula</strong> ou solte-se no laboratório livre.</li>
-          <li><strong>Mude o jeito de reforçar.</strong> Reforço é o que aumenta o comportamento. Você pode entregar reforço à mão ou configurar um esquema.</li>
-          <li><strong>Observe o registro.</strong> Cada resposta aparece no gráfico. O que o rato faz logo antes do reforço fica mais provável.</li>
-          <li><strong>Conclua o caderno.</strong> Ele compara o que você achava com o que de fato aconteceu.</li>
+          <li>Escolha uma aula.</li>
+          <li>Reforce o que quer ver mais: use o botão de reforço ou um esquema.</li>
+          <li>Veja o registro. Cada resposta aparece no gráfico.</li>
         </ol>
         <details>
-          <summary>Glossário rápido</summary>
+          <summary>O que significam os termos?</summary>
           <dl>
             <dt>Reforço</dt><dd>Algo que aparece depois do comportamento e faz ele se repetir mais.</dd>
-            <dt>Esquema</dt><dd>A regra que decide quando o reforço aparece (ex.: FR 5 = a cada 5 respostas).</dd>
-            <dt>Punição</dt><dd>Um bip abstrato que faz o comportamento diminuir.</dd>
+            <dt>Esquema</dt><dd>A regra de quando o reforço aparece. FR 5 = a cada 5 respostas.</dd>
+            <dt>Punição</dt><dd>Um bip que faz o comportamento diminuir.</dd>
             <dt>Extinção</dt><dd>Parar de reforçar. O comportamento tende a cair.</dd>
-            <dt>Fome</dt><dd>Reforço perde valor quando o rato está saciado. A fome volta com o tempo.</dd>
-            <dt>Luz S+ / S−</dt><dd>Luz acesa é a hora de reforçar; apagada, não reforçar.</dd>
+            <dt>Fome</dt><dd>Reforço perde valor quando o rato está saciado.</dd>
+            <dt>Luz</dt><dd>Luz acesa: reforço disponível. Apagada: não reforce.</dd>
           </dl>
         </details>
-        <button class="primary" data-action="dismiss-intro">Entendi, bora</button>
+        <button class="primary" data-action="dismiss-intro">Entendi</button>
       </section>`}
 
       <section class="card setup">
-        <h2>Escolha a aula</h2>
-        <div class="lesson-grid">${lessonCards}</div>
+        <h2>Aula</h2>
+        <div class="lesson-grid">${cards}</div>
         ${lesson ? `<p class="objective">${esc(lesson.objetivo)}</p>` : ''}
         <div class="row">
           <label>Rato<select data-field="rat" ${lesson ? 'disabled' : ''}>${ratOptions}</select></label>
           ${lesson ? '' : `<label>Alavancas<select data-field="levers"><option value="1" ${this.leverCount === 1 ? 'selected' : ''}>1</option><option value="2" ${this.leverCount === 2 ? 'selected' : ''}>2</option></select></label>`}
           <label>Semente<input type="number" data-field="seed" value="${this.seed}" min="1" /></label>
         </div>
-        <p class="hint">Mesma semente, mesmo rato: a turma pode comparar resultados.</p>
-        ${memory ? `<p class="memory">🧠 ${esc(rat.name)} lembra das sessões anteriores. <button class="link" data-action="forget" data-rat="${rat.id}">esquecer</button></p>` : ''}
+        ${memory ? `<p class="memory">🧠 ${esc(rat.name)} lembra de sessões anteriores. <button class="link" data-action="forget" data-rat="${rat.id}">esquecer</button></p>` : ''}
         <button class="primary big" data-action="start">Começar</button>
       </section>`;
   }
 
   private mountPlay(): void {
-    const title = this.lesson ? this.lesson.titulo : 'Laboratório livre';
+    const title = this.lesson ? this.lesson.titulo : 'Livre';
     const leverRows = this.levers
       .map((_, i) => {
-        const left = this.levers.length === 1 ? 46 : 42 + i * 18;
+        const left = this.levers.length === 1 ? 80 : 74 + i * 16;
         return `<div class="lever" data-lever="${i}" style="left:${left}%"><span>${i + 1}</span></div>`;
       })
       .join('');
     const deliver = this.levers
-      .map((_, i) => `<button data-action="deliver" data-lever="${i}">+ reforço à mão (alavanca ${i + 1})</button>`)
+      .map((_, i) => `<button class="reward" data-action="deliver" data-lever="${i}">Reforçar${this.levers.length > 1 ? ` (${i + 1})` : ''}</button>`)
       .join('');
     const leverOptions = this.levers.map((_, i) => `<option value="${i}">Alavanca ${i + 1}</option>`).join('');
     const questions = this.lesson
@@ -224,83 +220,82 @@ class App {
       .map(
         (_, i) => `
           <div class="declare">
-            <span>Alavanca ${i + 1}: eu acho que está em</span>
+            <span>Alavanca ${i + 1}: acho que está em</span>
             <select data-declare="kind" data-lever="${i}">${kindOptions('FR')}</select>
             <input type="number" data-declare="value" data-lever="${i}" value="5" min="0" step="any" />
           </div>`,
       )
       .join('');
-    const acessorio = this.rat.visual.acessorio ? ` · ${esc(this.rat.visual.acessorio)}` : '';
 
     this.root.innerHTML = `
-      <header class="hero compact">
-        <div>
-          <h1>Caixa Skinner</h1>
-          <p class="tagline">${esc(title)} · ${esc(this.rat.name)}${acessorio} · semente ${this.seed}</p>
-        </div>
-        <span class="pill">⏩ tempo acelerado</span>
+      <header class="topbar">
+        <div><strong>Caixa Skinner</strong> · ${esc(title)}</div>
+        <div class="clock" data-role="clock"></div>
       </header>
+
       <section class="play">
-        <div class="transport card">
-          <button data-action="toggle">${this.playing ? '⏸ Pausar' : '▶ Continuar'}</button>
+        <div class="transport">
+          <button data-action="toggle">${this.playing ? '⏸' : '▶'}</button>
           ${SPEEDS.map((s, i) => `<button data-action="speed" data-speed="${i}" class="${i === this.speedIndex ? 'active' : ''}">${s.label}</button>`).join('')}
-          <span class="clock" data-role="clock"></span>
-          <button data-action="reset">Nova sessão</button>
+          <button class="ghost" data-action="reset">Nova sessão</button>
         </div>
-        ${this.lesson ? `<p class="card objective">${esc(this.lesson.objetivo)}</p>` : ''}
-        <div class="grid">
-          <div class="col">
-            <div class="box card" data-role="box">
-              <div class="lamp" data-role="lamp" title="luz de estímulo"></div>
-              <div class="rat-slot" data-role="rat">${ratSvg(this.rat.visual, 'idle')}</div>
-              ${leverRows}
-              <div class="pellet" data-role="pellet"></div>
+
+        <div class="chips" data-role="chips"></div>
+        <div class="guide" data-role="guide"></div>
+
+        <div class="card box" data-role="box">
+          <div class="lamp" data-role="lamp" title="luz"></div>
+          <div class="rat-slot" data-role="rat">${ratSvg(this.rat.visual, 'idle')}</div>
+          ${leverRows}
+          <div class="pellet" data-role="pellet"></div>
+        </div>
+        <p class="narr" data-role="narr"></p>
+        <div class="deliver">${deliver}</div>
+
+        <div class="card mission" data-role="missao"></div>
+
+        <details class="panel" open>
+          <summary>Registro</summary>
+          <div class="record" data-role="record"></div>
+          <ul class="notes" data-role="notes"></ul>
+          <ul class="feedback" data-role="feedback"></ul>
+        </details>
+
+        <details class="panel">
+          <summary>Mudar esquema ou punição</summary>
+          <form data-form="schedule">
+            <h3>Esquema</h3>
+            <div class="row">
+              <select name="lever">${leverOptions}</select>
+              <select name="kind">${kindOptions('FR')}</select>
+              <input name="value" type="number" value="5" min="0" step="any" aria-label="valor" />
+              <button type="submit">Aplicar</button>
             </div>
-            <p class="narr" data-role="narr"></p>
-            <div class="counters card" data-role="counters"></div>
-            <div class="deliver">${deliver}</div>
-            <form class="card" data-form="schedule">
-              <h3>Mudar o esquema</h3>
-              <div class="row">
-                <select name="lever">${leverOptions}</select>
-                <select name="kind">${kindOptions('FR')}</select>
-                <input name="value" type="number" value="5" min="0" step="any" aria-label="valor (n ou segundos)" />
-                <button type="submit">Aplicar</button>
-              </div>
-              <p class="hint">FR e VR: número de respostas. Os demais: segundos.</p>
-            </form>
-            <form class="card" data-form="punish">
-              <h3>Punição (bip abstrato)</h3>
-              <div class="row">
-                <select name="lever">${leverOptions}</select>
-                <select name="kind">${kindOptions('EXT')}</select>
-                <input name="value" type="number" value="4" min="0" step="any" aria-label="valor da punição" />
-                <button type="submit">Aplicar</button>
-              </div>
-              <p class="hint">Punição vem depois de respostas. EXT desliga.</p>
-            </form>
-            <form class="card" data-form="note">
-              <h3>Anotação</h3>
-              <div class="row"><input name="text" type="text" placeholder="o que você está testando agora?" /><button type="submit">Anotar</button></div>
-            </form>
-            <ul class="notes" data-role="notes"></ul>
-          </div>
-          <div class="col">
-            <div class="card" data-role="missao"></div>
-            <div class="record card" data-role="record"></div>
-            <h3>O que o registro mostra</h3>
-            <ul class="feedback card" data-role="feedback"></ul>
-            <form class="card" data-form="caderno">
-              <h3>Caderno de laboratório</h3>
-              <p class="hint">Escreva a hipótese antes de mexer no esquema. Ao concluir, o registro é comparado com ela.</p>
-              ${declared}
-              ${questions}
-              <button type="submit" class="primary">Concluir e comparar</button>
-            </form>
-            <div class="result card" data-role="result"></div>
-            <button data-action="export">Exportar CSV</button>
-          </div>
-        </div>
+            <p class="hint">FR e VR: número de respostas. Os demais: segundos.</p>
+          </form>
+          <form data-form="punish">
+            <h3>Punição (bip)</h3>
+            <div class="row">
+              <select name="lever">${leverOptions}</select>
+              <select name="kind">${kindOptions('EXT')}</select>
+              <input name="value" type="number" value="4" min="0" step="any" aria-label="valor da punição" />
+              <button type="submit">Aplicar</button>
+            </div>
+          </form>
+        </details>
+
+        <details class="panel">
+          <summary>Caderno de laboratório</summary>
+          <form data-form="caderno">
+            <p class="hint">Antes de mexer, escreva o que você acha que está em vigor. Ao concluir, comparamos com o registro.</p>
+            ${declared}
+            ${questions}
+            <button type="submit" class="primary">Concluir e comparar</button>
+          </form>
+          <div class="result" data-role="result"></div>
+        </details>
+
+        <p class="footer"><button class="ghost" data-action="export">Exportar CSV</button></p>
       </section>`;
     this.update();
   }
@@ -358,7 +353,7 @@ class App {
     const q = <T extends Element>(sel: string): T | null => this.root.querySelector<T>(sel);
 
     const clockEl = q<HTMLElement>('[data-role=clock]');
-    if (clockEl) clockEl.textContent = `${clock(now)} / ${clock(this.durationMs)}${session.ended ? ' · encerrada' : ''}`;
+    if (clockEl) clockEl.textContent = `${clock(now)} / ${clock(this.durationMs)}${session.ended ? ' · fim' : ''}`;
 
     const lastResponse = lastEvent(log, 'response');
     const lastReinforcer = lastEvent(log, 'reinforcer');
@@ -375,54 +370,42 @@ class App {
       const lever = Number(el.dataset.lever);
       el.classList.toggle('down', lastResponse?.lever === lever && now - lastResponse.t < 200);
     });
-
-    const box = q<HTMLElement>('[data-role=box]');
-    box?.classList.toggle('punished', lastPunishment !== undefined && now - lastPunishment.t < 300);
+    q<HTMLElement>('[data-role=box]')?.classList.toggle('punished', lastPunishment !== undefined && now - lastPunishment.t < 300);
     const lamp = q<HTMLElement>('[data-role=lamp]');
     if (lamp) {
-      lamp.classList.toggle('on', this.lesson?.luz ? session.light : false);
-      lamp.classList.toggle('has-stimulus', this.lesson?.luz !== undefined);
+      lamp.style.display = this.lesson?.luz ? '' : 'none';
+      lamp.classList.toggle('on', session.light);
     }
     q<HTMLElement>('[data-role=pellet]')?.classList.toggle('on', lastReinforcer !== undefined && now - lastReinforcer.t < 900);
+
+    // fichas de status: uma linha, sempre no mesmo lugar
+    const chips = q<HTMLElement>('[data-role=chips]');
+    if (chips) {
+      const hunger = Math.round(session.hunger * 100);
+      const behavior = ratState ? BEHAVIOR_LABEL[ratState.behavior as keyof typeof BEHAVIOR_LABEL] : '';
+      const luzChip = this.lesson?.luz ? `<span class="chip ${session.light ? 'light-on' : 'light-off'}">${session.light ? '💡 luz acesa' : '🌑 luz apagada'}</span>` : '';
+      const schedules = this.levers.map((_, i) => `<span class="chip">Alav. ${i + 1}: ${esc(lastSpec(log, i))}</span>`).join('');
+      chips.innerHTML = `
+        <span class="chip">🐭 ${esc(behavior)}</span>
+        ${luzChip}
+        <span class="chip hunger">🍽 <i style="width:${Math.round(hunger * 0.46)}px"></i></span>
+        ${schedules}`;
+    }
+
+    const guide = q<HTMLElement>('[data-role=guide]');
+    if (guide) guide.textContent = this.guideLine(session);
 
     const narr = q<HTMLElement>('[data-role=narr]');
     if (narr) {
       const manual = lastReinforcer?.source === 'manual';
-      const mechanical = lastReinforcer
-        ? `Reforço ${manual ? 'à mão' : 'automático'} na alavanca ${(lastReinforcer.lever ?? 0) + 1}, aos ${clock(lastReinforcer.t)}.`
-        : '';
       const punishedRecently = lastPunishment !== undefined && now - lastPunishment.t < 2000;
-      const flavour = session.ended
+      narr.textContent = session.ended
         ? narrate('fim', now)
         : punishedRecently
           ? narrate('punicao', lastPunishment.t)
           : lastReinforcer
             ? narrate(manual ? 'reforco_manual' : 'reforco_auto', lastReinforcer.t)
             : narrate('sem_reforco', now);
-      narr.innerHTML = `${esc(mechanical)} <em>${esc(flavour)}</em>`;
-    }
-
-    const counters = q<HTMLElement>('[data-role=counters]');
-    if (counters) {
-      const hunger = Math.round(session.hunger * 100);
-      const stimulusLine = this.lesson?.luz
-        ? `<div><strong>Luz</strong> · ${session.light ? 'acesa: reforço disponível' : 'apagada: sem reforço'}</div>`
-        : '';
-      const behaviorLine = ratState
-        ? `<div><strong>Rato</strong> · ${esc(BEHAVIOR_LABEL[ratState.behavior as keyof typeof BEHAVIOR_LABEL])}</div>`
-        : '';
-      const hungerLine = `<div class="hunger"><strong>Fome</strong><span class="meter"><i style="width:${hunger}%"></i></span> ${hunger}%</div>`;
-      counters.innerHTML =
-        behaviorLine +
-        stimulusLine +
-        hungerLine +
-        this.levers
-          .map((_, i) => {
-            const punish = lastPunishSpec(log, i);
-            const punishText = punish ? ` · punição ${esc(punish)}` : '';
-            return `<div><strong>Alavanca ${i + 1}</strong> · ${esc(lastSpec(log, i))}${punishText} · respostas ${log.ofType('response', i).length} · reforços ${log.ofType('reinforcer', i).length}</div>`;
-          })
-          .join('');
     }
 
     const missao = q<HTMLElement>('[data-role=missao]');
@@ -430,10 +413,10 @@ class App {
       if (this.lesson?.criterio) {
         const progresso = avaliar(log, this.lesson.criterio);
         missao.className = `card mission ${progresso.ok ? 'done' : ''}`;
-        missao.innerHTML = `<h3>${progresso.ok ? '🎉 Missão concluída' : 'Missão'}</h3><p>${esc(progresso.texto)}</p>`;
+        missao.innerHTML = `<strong>${progresso.ok ? '🎉 Missão concluída' : 'Missão'}</strong><span>${esc(progresso.texto)}</span>`;
       } else {
         missao.className = 'card mission';
-        missao.innerHTML = '<h3>Laboratório livre</h3><p class="hint">Sem missão. Explore à vontade.</p>';
+        missao.innerHTML = '<strong>Livre</strong><span>Sem missão. Explore à vontade.</span>';
       }
     }
 
@@ -454,12 +437,32 @@ class App {
     if (notes) {
       notes.innerHTML = log
         .ofType('note')
-        .map(e => `<li><span class="when">${clock(e.t)}</span> ${esc(e.text ?? '')}</li>`)
+        .map(e => `<li class="${e.auto ? 'auto' : ''}"><span class="when">${clock(e.t)}</span> ${esc(e.text ?? '')}</li>`)
         .join('');
     }
 
     const toggle = q<HTMLButtonElement>('[data-action=toggle]');
-    if (toggle) toggle.textContent = this.playing ? '⏸ Pausar' : '▶ Continuar';
+    if (toggle) toggle.textContent = this.playing ? '⏸' : '▶';
+  }
+
+  /** Uma frase só, dizendo o que fazer agora. Muda conforme a aula e o estado da caixa. */
+  private guideLine(session: Session): string {
+    if (session.ended) return 'Sessão encerrada. Veja o registro e conclua o caderno.';
+    const state = session.ratState;
+    if (this.lesson?.luz) {
+      return session.light
+        ? 'Luz acesa: o reforço funciona agora. Reforce quando ele responder.'
+        : 'Luz apagada: não reforce agora. Observe.';
+    }
+    if (this.lesson?.repertorio && state) {
+      if (state.behavior === 'press') return 'Ele pressionou a barra! Reforce agora.';
+      if (state.behavior === 'touch') return 'Ele tocou a barra. Reforce já.';
+      if (state.behavior === 'approach' || state.pos > 0.4) return 'Ele está indo até a barra. Reforce enquanto se aproxima.';
+      return 'Espere ele se mexer e reforce o que ele fizer.';
+    }
+    const reinforcers = session.log.ofType('reinforcer').length;
+    if (reinforcers === 0) return 'Ainda sem reforço. Reforce quando achar o momento certo.';
+    return 'Observe o registro. Mude o esquema quando quiser testar outra coisa.';
   }
 
   // ---------- eventos ----------
@@ -519,14 +522,6 @@ class App {
       const data = new FormData(form);
       const spec = specFrom(String(data.get('kind')) as ScheduleSpec['kind'], Number(data.get('value')));
       this.act({ kind: 'set_punish', lever: Number(data.get('lever')), spec });
-    } else if (kind === 'note') {
-      const input = form.querySelector<HTMLInputElement>('input[name=text]');
-      const text = input?.value.trim() ?? '';
-      if (text && this.session) {
-        this.session.act({ kind: 'note', text });
-        if (input) input.value = '';
-        this.update();
-      }
     } else if (kind === 'caderno') {
       this.conclude(form);
     }
@@ -541,7 +536,7 @@ class App {
 
   private flashNarration(line: string): void {
     const narr = this.root.querySelector<HTMLElement>('[data-role=narr]');
-    if (narr) narr.innerHTML = `<em>${esc(line)}</em>`;
+    if (narr) narr.textContent = line;
   }
 
   private start(): void {
@@ -581,12 +576,10 @@ class App {
       const declared = kindEl && valueEl ? specFrom(kindEl.value as ScheduleSpec['kind'], Number(valueEl.value)) : null;
       const result = classify(inputFromLog(log, i));
       const verdict = declared ? compareIntent(declared, result) : null;
-      const evidence = result.evidence.map(s => `<li>${esc(s)}</li>`).join('');
       return `
         <div class="lever-result">
           <h4>Alavanca ${i + 1}: ${esc(RESULT_TEXT[result.label] ?? result.label)}</h4>
           ${verdict ? `<p class="${verdict.match ? 'ok' : 'miss'}">${esc(verdict.text)}</p>` : ''}
-          <ul>${evidence}</ul>
         </div>`;
     });
 
@@ -595,7 +588,7 @@ class App {
     const list = checks.map(c => `<li class="${c.ok ? 'ok' : 'miss'}">${c.ok ? '✔' : '✖'} ${esc(c.text)}</li>`).join('');
     const result = this.root.querySelector<HTMLElement>('[data-role=result]');
     if (result) {
-      result.innerHTML = `<h3>Comparação</h3>${parts.join('')}<h3>Práticas de método: ${done} de ${checks.length}</h3><ul class="checks">${list}</ul>`;
+      result.innerHTML = `<h3>Comparação</h3>${parts.join('')}<h3>Práticas: ${done} de ${checks.length}</h3><ul class="checks">${list}</ul>`;
     }
     this.update();
   }
@@ -625,11 +618,4 @@ function lastEvent(log: EventLog, type: LogEvent['type']): LogEvent | undefined 
 function lastSpec(log: EventLog, lever: number): string {
   const sets = log.ofType('schedule_set', lever).filter(e => e.text === undefined || e.text === 'inicial');
   return sets[sets.length - 1]?.spec ?? '—';
-}
-
-/** Punição atualmente em vigor na alavanca, se houver. */
-function lastPunishSpec(log: EventLog, lever: number): string | undefined {
-  const sets = log.ofType('schedule_set', lever).filter(e => e.text === 'punição' || e.text === 'punição inicial');
-  const last = sets[sets.length - 1];
-  return last && last.spec !== 'EXT' ? last.spec : undefined;
 }

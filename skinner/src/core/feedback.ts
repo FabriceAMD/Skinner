@@ -129,27 +129,14 @@ export interface MethodCheck {
  */
 export function methodChecks(log: EventLog): MethodCheck[] {
   const changes = log.ofType('schedule_set').filter(e => e.text === undefined && e.t > 0);
-  const notes = log.ofType('note');
+  const punishSets = log.ofType('schedule_set').filter(e => e.text === 'punição');
+  const manual = log.ofType('reinforcer').filter(e => e.source === 'manual');
   const last = log.all.length > 0 ? log.all[log.all.length - 1].t : 0;
-  const firstChange = changes[0];
-  const notedBeforeChange = firstChange ? notes.some(n => n.t < firstChange.t) : notes.length > 0;
 
   return [
-    {
-      ok: notedBeforeChange,
-      text: 'Anotou a hipótese antes de mexer no esquema',
-    },
-    {
-      ok: changes.length > 0,
-      text: 'Testou pelo menos uma mudança de esquema',
-    },
-    {
-      ok: notes.length > 0,
-      text: 'Registrou pelo menos uma anotação',
-    },
-    {
-      ok: last >= 5 * 60_000,
-      text: 'Deixou a sessão rodar por pelo menos 5 min',
-    },
+    { ok: changes.length > 0, text: 'Testou uma mudança de esquema' },
+    { ok: punishSets.length > 0, text: 'Testou uma punição' },
+    { ok: manual.length > 0, text: 'Entregou reforço à mão' },
+    { ok: last >= 5 * 60_000, text: 'Deixou a sessão rodar por pelo menos 5 min' },
   ];
 }

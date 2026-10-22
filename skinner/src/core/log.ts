@@ -18,6 +18,8 @@ export interface LogEvent {
   source?: 'auto' | 'manual';
   spec?: string;
   text?: string;
+  /** Anotação gerada pelo sistema, a partir das ações do estudante. */
+  auto?: boolean;
 }
 
 export class EventLog {

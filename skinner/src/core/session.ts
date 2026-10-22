@@ -123,6 +123,7 @@ export class Session {
       if (command.lever === 0) this.curriculum = null;
       this.schedules[command.lever] = createSchedule(command.spec, this.now);
       this.log.add({ t: this.now, type: 'schedule_set', lever: command.lever, spec: formatSpec(command.spec) });
+      this.autoNote(`Alavanca ${command.lever + 1}: esquema ${formatSpec(command.spec)}`);
     } else if (command.kind === 'set_punish') {
       this.punishers[command.lever] = createSchedule(command.spec, this.now);
       this.log.add({
@@ -132,6 +133,11 @@ export class Session {
         spec: formatSpec(command.spec),
         text: 'punição',
       });
+      this.autoNote(
+        command.spec.kind === 'EXT'
+          ? `Alavanca ${command.lever + 1}: punição desligada`
+          : `Alavanca ${command.lever + 1}: punição ${formatSpec(command.spec)}`,
+      );
     } else {
       this.log.add({ t: this.now, type: 'reinforcer', lever: command.lever, source: 'manual' });
       this.rat.onReinforcer(command.lever, this.now);
@@ -152,6 +158,10 @@ export class Session {
     this.lightOn = on;
     this.rat.setStimulus?.(on);
     this.log.add({ t: now, type: 'stimulus', text: on ? 'luz acesa' : 'luz apagada' });
+  }
+
+  private autoNote(text: string): void {
+    this.log.add({ t: this.now, type: 'note', text, auto: true });
   }
 
   private logBehavior(now: number): void {
@@ -197,6 +207,7 @@ export class Session {
       if (i === 0 && this.curriculum?.onReinforcer()) {
         schedules[0] = createSchedule(this.curriculum.spec, now);
         log.add({ t: now, type: 'stage_change', lever: 0, spec: formatSpec(this.curriculum.spec) });
+        this.autoNote(`Critério atingido: próxima etapa ${formatSpec(this.curriculum.spec)}`);
       }
     });
 
