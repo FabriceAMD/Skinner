@@ -1,39 +1,41 @@
 # Caixa Skinner
 
-Simulador de caixa de Skinner para ensino de análise do comportamento. Roda no navegador, sem servidor e sem
-cadastro. Nenhum dado sai da máquina do aluno; o registro pode ser exportado em CSV.
+Jogo de laboratório de análise do comportamento: você treina um rato virtual com o clique, como num
+laboratório de verdade, só que com tempo acelerado. Roda no navegador (celular ou computador), sem servidor.
 
-## Para o professor
+Inspirado no **Sniffy, the Virtual Rat** (treino de comedouro, modelagem, registro cumulativo, janela da
+"mente" do rato) e no **Training Game** de Karen Pryor (clique = reforço; o timing é o que importa).
 
-1. Abra a página publicada e escolha uma aula, ou use a **aula livre** com um rato e uma ou duas alavancas.
-2. Use a **mesma semente** para toda a turma: o mesmo rato, a mesma sequência de respostas.
-3. O aluno escreve a hipótese no caderno antes de mudar o esquema. Ao concluir, o registro é comparado com a
-   hipótese.
-4. Exporte o CSV para análise em planilha.
+## Missões
 
-O classificador separa FR, FI, DRO, DRL e EXT. **Razão variável (VR) e intervalo variável (VI) não se separam
-só pelo registro** quando o rato responde em taxa estável: o próprio sistema informa isso ao aluno. Separar os
-dois exige mudar a taxa do rato, o que é um bom exercício.
+1. **Carregar o clique**: o clique vira reforçador condicionado (treino de comedouro).
+2. **Modelagem até a barra**: aproximações sucessivas até a pressão.
+3. **Reforço contínuo**: o alimentador reforça cada pressão.
+4. **Razão fixa 5**: a taxa sobe.
+5. **Extinção**: surto de extinção e depois queda.
+6. **Luz que manda**: discriminação S+/S− com intervalo variável na luz acesa.
 
-## Para desenvolver
+E um **laboratório livre** com esquemas (CRF, FR, VR, VI, FI, extinção) e luz.
+
+## Como o rato funciona (`src/game/sim.ts`)
+
+- Nove comportamentos (explorar, farejar, levantar, se limpar, ir ao comedouro, ir até a barra, cheirar,
+  apoiar e pressionar). O rato escolhe o próximo em proporção à força de cada um.
+- **Contiguidade:** o reforço fortalece o que aconteceu logo antes, por um traço que decai em cerca de 1 s.
+- **Força relativa:** a soma das forças é limitada; reforçar um comportamento tira espaço dos outros.
+- **Indução:** reforçar um elo da cadeia até a barra deixa o próximo elo um pouco mais provável.
+- **Clique condicionado:** o clique só reforça na hora depois do treino de comedouro (Rescorla-Wagner).
+- **Saciedade:** cada pelota sacia; reforço vale menos com o rato saciado.
+- **Extinção:** pressão sem reforço perde força quando o rato esperava reforço; a frustração gera o surto.
+- **Discriminação:** forças e expectativa separadas para luz acesa e apagada.
+
+O rato é um modelo didático, não um animal.
+
+## Desenvolvimento
 
 ```bash
 npm install
-npm test        # motor, esquemas, classificador, conteúdo
-npm run dev     # servidor local
-npm run build   # typecheck + build estático em dist/
+npm test        # simulação do jogo e motor de esquemas
+npm run dev
+npm run build   # gera dist/
 ```
-
-Estrutura:
-
-- `src/core/`: motor puro, sem interface. Tempo virtual, RNG com semente, esquemas, ratos, log de eventos,
-  classificador e feedback descritivo.
-- `src/content/`: ratos, aulas e narração em JSON. Adicionar uma aula não exige código.
-- `src/ui/`: interface (caixa, registro cumulativo, caderno).
-- `tests/`: testes do motor e do conteúdo.
-
-## Limites do modelo
-
-- O rato é um modelo, não um animal. A variabilidade é controlada e documentada em `src/core/rats.ts`.
-- Os modelos molar e Keller são aproximações didáticas, não reproduções fiéis de dados experimentais.
-- A narração tem humor de escritório. Punição ainda não está implementada. Quando entrar, será abstrata (um sinal visual, sem conteúdo gráfico).

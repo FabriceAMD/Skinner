@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { avaliar, Session, timingFeedback, type RatConfig } from '../src/core';
-import { LESSONS } from '../src/content';
 
 const SHAPING: RatConfig = { id: 'c', name: 'c', model: 'molar', repertorio: true, baseRate: 10, maxRate: 40, halfRate: 10 };
 
@@ -45,10 +44,4 @@ describe('repertório e modelagem', () => {
     expect(avaliar(s.log, { tipo: 'taxa', porMin: 1, minutos: 1 }).ok).toBe(true);
   });
 
-  it('aulas novas carregam repertório e critério válidos', () => {
-    const shaping = LESSONS.find(l => l.id === 'modelagem-barra');
-    expect(shaping?.repertorio).toBe(true);
-    expect(shaping?.criterio).toEqual({ tipo: 'respostas', n: 3 });
-    expect(LESSONS.find(l => l.id === 'comedouro')?.criterio).toEqual({ tipo: 'reforcos', n: 5 });
-  });
 });
