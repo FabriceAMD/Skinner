@@ -84,7 +84,7 @@ describe('simulação do rato', () => {
     run(sim, 180);
     const thirdMinute = sim.pressesSince(60);
     expect(fr5).toBeGreaterThan(30);
-    expect(firstMinute).toBeGreaterThan(20);
+    expect(firstMinute).toBeGreaterThan(10);
     expect(thirdMinute).toBeLessThan(firstMinute / 2);
   });
 

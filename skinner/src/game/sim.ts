@@ -70,24 +70,25 @@ const AT_BAR: Choice[] = ['cheirarBarra', 'apoiar', 'pressionar'];
 const CHAIN: Choice[] = ['aproximar', 'cheirarBarra', 'apoiar', 'pressionar'];
 const INDUCTION = 0.5;
 const DURATION: Record<Behavior, number> = {
-  explorar: 1.6,
-  farejar: 1.0,
-  levantar: 0.9,
-  limpar: 2.0,
-  comedouro: 1.5,
+  explorar: 4.0,
+  farejar: 2.8,
+  levantar: 2.6,
+  limpar: 4.5,
+  comedouro: 2.0,
   aproximar: 0.6,
-  cheirarBarra: 1.0,
-  apoiar: 1.1,
-  pressionar: 1.8,
-  comer: 0.8,
+  cheirarBarra: 2.2,
+  apoiar: 2.4,
+  pressionar: 2.6,
+  comer: 1.2,
 };
 
 /** Comedouro ao lado da barra, como numa caixa de Skinner real. */
 export const FEEDER_X = 0.62;
 export const BAR_X = 0.86;
 const NEAR = 0.07;
-const SPEED = 0.4; // larguras da caixa por segundo
-const TRACE_TAU = 0.8;
+const SPEED = 0.25; // larguras da caixa por segundo (rato calmo, fácil de acompanhar)
+/** Tolerância ao atraso do clique: o traço do comportamento decai em ~1,5 s. */
+const TRACE_TAU = 1.5;
 const MAX_W = 8;
 /** Soma máxima das forças: reforçar um comportamento tira espaço dos outros (força relativa). */
 const TOTAL_CAP = 14;
@@ -223,8 +224,8 @@ export class Sim {
 
     let quality: Quality;
     if (this.brain.vMag < 0.3) quality = 'sem-efeito';
-    else if (delay < 0.3) quality = 'perfeito';
-    else if (delay < 1) quality = 'bom';
+    else if (delay < 0.6) quality = 'perfeito';
+    else if (delay < 1.6) quality = 'bom';
     else quality = 'tarde';
     const hit = this.targets.includes(reinforced);
     const points = !hit || quality === 'sem-efeito' ? 0 : quality === 'perfeito' ? 100 : quality === 'bom' ? 60 : 20;

@@ -42,7 +42,7 @@ export const MISSIONS: Mission[] = [
     cliqueManual: true,
     esquema: null,
     luz: null,
-    estrelas: [60, 150],
+    estrelas: [90, 200],
     progresso: sim => ({
       value: Math.min(sim.orientStreak, 5),
       goal: 5,
@@ -64,10 +64,10 @@ export const MISSIONS: Mission[] = [
     cliqueManual: true,
     esquema: null,
     luz: null,
-    estrelas: [150, 300],
+    estrelas: [180, 360],
     progresso: sim => {
-      const n = Math.min(sim.pressesSince(60), 5);
-      return { value: n, goal: 5, text: `${n} de 5 pressões no último minuto` };
+      const n = Math.min(sim.pressesSince(60), 3);
+      return { value: n, goal: 3, text: `${n} de 3 pressões no último minuto` };
     },
     licao: 'Você modelou por aproximações sucessivas: reforçou passos cada vez mais perto da resposta-alvo.',
   },

@@ -4,9 +4,11 @@ import { Sound } from './audio';
 import { MISSIONS, type Mission } from './missions';
 import { drawRecord, H, Renderer, W, type RatLook } from './render';
 import { CHOICES, freshBrain, LABEL, Sim, type Brain, type ClickReport } from './sim';
+import { mountTicker } from './ticker';
 
-const SPEEDS = [1, 4, 10];
-const DEFAULT_SPEED = 1; // índice: 4×
+const SPEEDS = [1, 2, 4];
+/** Começa em 1×: a janela de tolerância do clique fica em segundos reais. Acelere nas fases automáticas. */
+const DEFAULT_SPEED = 0;
 const STEP = 0.05;
 
 const KEY_PROGRESS = 'cs2:progresso';
@@ -73,6 +75,7 @@ interface Progresso {
 }
 
 export function startGame(root: HTMLElement): void {
+  mountTicker();
   new Game(root).home();
 }
 
@@ -92,6 +95,7 @@ class Game {
   private score = 0;
   private rafId = 0;
   private lastFrame: number | null = null;
+  private pending = 0;
   private seenEvents = 0;
   private lastPanel = 0;
   private tipIndex = 0;
@@ -156,10 +160,10 @@ class Game {
           <h2>Como se joga</h2>
           <ol>
             <li><b>Clique</b> (botão grande, toque na caixa ou barra de espaço) entrega uma pelota de comida.</li>
-            <li>O que o rato faz <b>no instante do clique</b> fica mais provável. Atrasou, reforçou outra coisa.</li>
+            <li>O que o rato faz <b>no instante do clique</b> (ou até 1 segundo antes) fica mais provável. Atrasou demais, reforçou outra coisa.</li>
             <li>Primeiro ensine que o clique significa comida. Depois, modele a pressão na barra.</li>
           </ol>
-          <p class="note">⏩ O tempo é acelerado: 1 minuto seu vale uns 4 minutos de rato.</p>
+          <p class="note">⏩ Quando ele já souber o que fazer, acelere o tempo (2× ou 4×) e veja o comportamento render mais rápido.</p>
           <button class="btn primary" data-action="intro-ok">Entendi</button>
         </section>`}
 
@@ -235,7 +239,7 @@ class Game {
           <div class="speed">
             <button class="icon" data-action="pause">${this.paused ? '▶' : '⏸'}</button>
             ${SPEEDS.map((s, i) => `<button class="pill ${i === this.speed ? 'on' : ''}" data-speed="${i}">${s}×</button>`).join('')}
-            <span class="accel">⏩ acelerado</span>
+            <span class="accel">⏩ acelerar</span>
           </div>
         </div>
 
@@ -256,6 +260,7 @@ class Game {
     canvas.addEventListener('pointerdown', () => this.studentClick());
     this.renderPanel();
     this.lastFrame = null;
+    this.pending = 0;
     cancelAnimationFrame(this.rafId);
     this.rafId = requestAnimationFrame(this.frame);
   }
@@ -264,8 +269,12 @@ class Game {
     const sim = this.sim;
     if (!sim || !this.renderer) return;
     if (!this.paused && !this.done && this.lastFrame !== null) {
-      const ratSeconds = Math.min(0.25, (now - this.lastFrame) / 1000) * SPEEDS[this.speed];
-      for (let t = 0; t < ratSeconds; t += STEP) sim.step(STEP);
+      // acumula o tempo real: um quadro (~16 ms) é menor que um passo da simulação (50 ms)
+      this.pending += Math.min(0.25, (now - this.lastFrame) / 1000) * SPEEDS[this.speed];
+      while (this.pending >= STEP) {
+        sim.step(STEP);
+        this.pending -= STEP;
+      }
     }
     this.lastFrame = now;
     this.handleEvents(now);
