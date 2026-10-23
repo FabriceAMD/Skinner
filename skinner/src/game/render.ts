@@ -1,9 +1,28 @@
 import { BAR_X, type Behavior, type Sim, type SimEvent } from './sim';
 
+export type CabeloEstilo = 'topete' | 'curto' | 'cacheado' | 'liso-franja' | 'grisalho';
+
+export interface Roupa {
+  cor: string;
+  padrao?: 'liso' | 'listras' | 'estampa' | 'jaleco';
+  cor2?: string;
+}
+
+/** Visual do rato: só estilo de desenho (roupa, cabelo, acessórios), inspirado nas pessoas homenageadas. */
+export interface Estilo {
+  cabelo?: CabeloEstilo;
+  roupa?: Roupa;
+  barba?: string;
+  oculos?: 'grande';
+  brinco?: string;
+  sorriso?: boolean;
+}
+
 export interface RatLook {
   pelagem: string;
   cabelo: string | null;
   acessorio: 'gravata' | 'oculos' | 'cracha' | null;
+  estilo?: Estilo;
 }
 
 interface Floater {
@@ -295,12 +314,13 @@ export function drawRecord(canvas: HTMLCanvasElement, sim: Sim, from: number, wi
 /** Desenha o rato com as patas no ponto (0, 0). Usado na caixa e na prévia do menu. */
 export function paintRat(c: CanvasRenderingContext2D, look: RatLook, b: Behavior, dir: number, t: number): void {
   const walking = b === 'explorar' || b === 'comedouro' || b === 'aproximar';
-const rearing = b === 'levantar' || b === 'apoiar' || b === 'pressionar';
-const facing = b === 'cheirarBarra' || b === 'apoiar' || b === 'pressionar' ? 1 : dir;
+  const rearing = b === 'levantar' || b === 'apoiar' || b === 'pressionar';
+  const facing = b === 'cheirarBarra' || b === 'apoiar' || b === 'pressionar' ? 1 : dir;
+  const estilo = look.estilo ?? {};
 
-c.save();
-c.scale(facing, 1);
-if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
+  c.save();
+  c.scale(facing, 1);
+  if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
 
   // rabo
   c.strokeStyle = '#e8a1a1';
@@ -320,15 +340,14 @@ if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
   // pernas
   c.fillStyle = shade(look.pelagem, -25);
   const step = walking ? Math.sin(t * 12) * 6 : 0;
-  for (const [lx, ph] of [[-22, 1], [26, -1]] as const) {
-    ellipse(c, lx + step * ph, 18, 9, 6);
-  }
+  for (const [lx, ph] of [[-22, 1], [26, -1]] as const) ellipse(c, lx + step * ph, 18, 9, 6);
 
   // corpo
   c.fillStyle = look.pelagem;
   ellipse(c, 6, 0, 52, 30);
   c.fillStyle = shade(look.pelagem, 18);
   ellipse(c, 10, 8, 34, 16);
+  if (estilo.roupa) paintClothes(c, estilo.roupa);
 
   // acessórios no corpo
   if (look.acessorio === 'gravata') {
@@ -376,39 +395,79 @@ if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
   const headDown = b === 'comer' ? 14 : 0;
   c.save();
   c.translate(58, -10 + nod + headDown);
+
+  // cabelo comprido fica atrás da cabeça
+  if (look.cabelo && estilo.cabelo === 'liso-franja') {
+    c.fillStyle = look.cabelo;
+    c.beginPath();
+    c.moveTo(-22, -10);
+    c.quadraticCurveTo(-30, 18, -18, 30);
+    c.lineTo(-2, 26);
+    c.quadraticCurveTo(-8, 8, 0, -16);
+    c.closePath();
+    c.fill();
+  }
+
   c.fillStyle = look.pelagem;
   ellipse(c, 0, 0, 26, 20);
   ellipse(c, 22, 6, 14, 11);
   // orelha
   c.fillStyle = '#f4b6b6';
   ellipse(c, -6, -18, 10, 11);
-  // cabelo
-  if (look.cabelo) {
-    c.fillStyle = look.cabelo;
+  if (estilo.brinco) {
+    c.fillStyle = estilo.brinco;
+    ellipse(c, -9, -5, 3.5, 4.5);
+  }
+
+  // barba
+  if (estilo.barba) {
+    c.fillStyle = estilo.barba;
     c.beginPath();
-    c.moveTo(-14, -14);
-    c.quadraticCurveTo(-4, -34, 14, -22);
-    c.quadraticCurveTo(4, -18, -2, -12);
+    c.moveTo(-4, 6);
+    c.quadraticCurveTo(10, 24, 30, 14);
+    c.quadraticCurveTo(26, 8, 14, 9);
+    c.quadraticCurveTo(4, 10, -4, 6);
     c.closePath();
     c.fill();
   }
+
+  if (look.cabelo) paintHair(c, look.cabelo, estilo.cabelo ?? 'topete');
+
   // olho
   c.fillStyle = '#111827';
-  ellipse(c, 10, -4, 3.5, 3.5);
-  if (look.acessorio === 'oculos') {
+  if (estilo.sorriso) {
+    // olho sorridente: arco para cima
     c.strokeStyle = '#111827';
     c.lineWidth = 2;
     c.beginPath();
-    c.arc(10, -4, 7, 0, Math.PI * 2);
+    c.arc(10, -2, 4, Math.PI * 1.1, Math.PI * 1.9);
+    c.stroke();
+  } else {
+    ellipse(c, 10, -4, 3.5, 3.5);
+  }
+  if (look.acessorio === 'oculos' || estilo.oculos) {
+    const big = estilo.oculos === 'grande';
+    c.strokeStyle = big ? '#7c5a3a' : '#111827';
+    c.lineWidth = big ? 3 : 2;
+    c.beginPath();
+    c.arc(10, -4, big ? 10 : 7, 0, Math.PI * 2);
     c.stroke();
     c.beginPath();
-    c.moveTo(3, -4);
+    c.moveTo(big ? 0 : 3, -4);
     c.lineTo(-6, -6);
     c.stroke();
   }
-  // focinho e bigodes
+
+  // focinho, sorriso e bigodes
   c.fillStyle = '#e57b8b';
   ellipse(c, 35, 6, 4, 3.5);
+  if (estilo.sorriso) {
+    c.strokeStyle = '#7f1d1d';
+    c.lineWidth = 1.8;
+    c.beginPath();
+    c.arc(26, 9, 6, 0.2, Math.PI * 0.8);
+    c.stroke();
+  }
   c.strokeStyle = 'rgba(55,65,81,.6)';
   c.lineWidth = 1.2;
   for (const dy of [-3, 2, 7]) {
@@ -423,6 +482,100 @@ if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
   c.restore();
 }
 
+/** Roupa vestida sobre a parte da frente do corpo. */
+function paintClothes(c: CanvasRenderingContext2D, roupa: Roupa): void {
+  c.save();
+  c.beginPath();
+  c.ellipse(6, 0, 52, 30, 0, 0, Math.PI * 2);
+  c.clip();
+  c.fillStyle = roupa.cor;
+  // cobre o tronco quase todo; a parte de trás do corpo fica com o pelo
+  c.fillRect(-28, -32, 86, 64);
+  if (roupa.padrao === 'listras') {
+    c.fillStyle = roupa.cor2 ?? shade(roupa.cor, -40);
+    for (let x = -26; x < 60; x += 9) c.fillRect(x, -32, 4, 64);
+  } else if (roupa.padrao === 'estampa') {
+    const cores = [roupa.cor2 ?? '#f97316', '#2563eb', '#facc15'];
+    let i = 0;
+    for (let x = -22; x < 60; x += 11) {
+      for (let y = -24; y < 30; y += 11) {
+        c.fillStyle = cores[i++ % cores.length];
+        c.beginPath();
+        c.arc(x + ((y / 11) % 2 ? 5 : 0), y, 2.6, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  } else if (roupa.padrao === 'jaleco') {
+    // jaleco branco aberto sobre roupa escura
+    c.fillStyle = roupa.cor2 ?? '#111827';
+    c.beginPath();
+    c.moveTo(34, -32);
+    c.lineTo(46, -32);
+    c.lineTo(40, 6);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = '#cbd5e1';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(34, -32);
+    c.lineTo(40, 6);
+    c.lineTo(46, -32);
+    c.stroke();
+  }
+  // gola
+  c.strokeStyle = shade(roupa.padrao === 'jaleco' ? '#ffffff' : roupa.cor, -35);
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(-28, -32);
+  c.lineTo(-28, 32);
+  c.stroke();
+  c.restore();
+}
+
+/** Cabelo sobre a cabeça. */
+function paintHair(c: CanvasRenderingContext2D, cor: string, estilo: CabeloEstilo): void {
+  c.fillStyle = cor;
+  switch (estilo) {
+    case 'cacheado':
+      for (const [x, y, r] of [[-14, -14, 7], [-6, -22, 8], [4, -24, 8], [13, -20, 7], [-18, -4, 6], [20, -14, 6]] as const) {
+        c.beginPath();
+        c.arc(x, y, r, 0, Math.PI * 2);
+        c.fill();
+      }
+      break;
+    case 'liso-franja':
+      c.beginPath();
+      c.moveTo(-22, -6);
+      c.quadraticCurveTo(-16, -30, 6, -24);
+      c.quadraticCurveTo(20, -20, 22, -8);
+      c.lineTo(16, -6);
+      c.lineTo(12, -11);
+      c.lineTo(6, -7);
+      c.lineTo(0, -12);
+      c.lineTo(-6, -8);
+      c.closePath();
+      c.fill();
+      break;
+    case 'curto':
+    case 'grisalho':
+      c.beginPath();
+      c.moveTo(-20, -8);
+      c.quadraticCurveTo(-14, -28, 6, -24);
+      c.quadraticCurveTo(18, -21, 20, -10);
+      c.quadraticCurveTo(4, -16, -20, -8);
+      c.closePath();
+      c.fill();
+      break;
+    default:
+      c.beginPath();
+      c.moveTo(-14, -14);
+      c.quadraticCurveTo(-4, -34, 14, -22);
+      c.quadraticCurveTo(4, -18, -2, -12);
+      c.closePath();
+      c.fill();
+  }
+}
+
 /** Prévia do rato no menu: ele alterna alguns comportamentos para mostrar o jeito dele. */
 const PREVIEW_CYCLE: Behavior[] = ['farejar', 'levantar', 'limpar', 'explorar', 'cheirarBarra'];
 
@@ -433,11 +586,11 @@ export function drawRatPreview(canvas: HTMLCanvasElement, look: RatLook, now: nu
   const b = PREVIEW_CYCLE[Math.floor(t / 1.6) % PREVIEW_CYCLE.length];
   c.clearRect(0, 0, canvas.width, canvas.height);
   c.fillStyle = '#e8dcc6';
-  c.fillRect(0, canvas.height - 22, canvas.width, 22);
+  c.fillRect(0, canvas.height - 14, canvas.width, 14);
   c.save();
-  // escala 1: cabe o rato inteiro, inclusive em pé, com a cauda à direita
-  c.translate(canvas.width / 2 - 10, canvas.height - 24);
-  c.scale(1, 1);
+  // escala que ainda cabe o rato inteiro em pé, com a cauda à direita
+  c.translate(canvas.width / 2 - 10, canvas.height - 16);
+  c.scale(1.05, 1.05);
   paintRat(c, look, b, -1, t);
   c.restore();
 }

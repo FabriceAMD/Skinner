@@ -28,6 +28,7 @@ export const FRASES = [
   'Programação de Condições para o Desenvolvimento de Comportamentos',
   'Carolina Bori e a PCDC',
   'Nádia Kienen',
+  'Anna Ramos',
   'Olga Kubo',
   'Botomé',
   'Helder',

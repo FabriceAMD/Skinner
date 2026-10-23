@@ -74,6 +74,7 @@ const lookOf = (rat: RatEntry): RatLook => ({
   pelagem: rat.visual.pelagem,
   cabelo: rat.visual.cabelo,
   acessorio: rat.visual.acessorio,
+  estilo: rat.visual.estilo,
 });
 
 interface Progresso {

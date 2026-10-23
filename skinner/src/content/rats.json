@@ -28,7 +28,7 @@
   },
   {
     "id": "molar",
-    "name": "Molar",
+    "name": "João Molar",
     "model": "molar",
     "papel": "Analista de alocação",
     "descricao": "Distribui as respostas entre as alavancas conforme os reforços que recebe. Acompanha a taxa, não cada reforço.",
@@ -38,9 +38,20 @@
     "explore": 0.2,
     "noise": 0.2,
     "visual": {
-      "pelagem": "#8e8e8e",
-      "cabelo": null,
-      "acessorio": "gravata"
+      "pelagem": "#9c8f80",
+      "cabelo": "#2b1d14",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "curto",
+        "roupa": {
+          "cor": "#5b7fb8",
+          "padrao": "listras",
+          "cor2": "#1e2f5c"
+        },
+        "barba": "#2b1d14",
+        "brinco": "#cbd5e1",
+        "sorriso": true
+      }
     },
     "tracos": {
       "aprendizagem": 0.9,
@@ -65,9 +76,18 @@
     "explore": 0.1,
     "noise": 0.1,
     "visual": {
-      "pelagem": "#d9c7a7",
-      "cabelo": "#5b3a29",
-      "acessorio": "oculos"
+      "pelagem": "#c9c2b8",
+      "cabelo": "#9ca3af",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "grisalho",
+        "roupa": {
+          "cor": "#f8fafc",
+          "padrao": "jaleco",
+          "cor2": "#111827"
+        },
+        "oculos": "grande"
+      }
     },
     "tracos": {
       "aprendizagem": 1.25,
@@ -92,9 +112,18 @@
     "maxRate": 45,
     "noise": 0.1,
     "visual": {
-      "pelagem": "#a3a0a0",
-      "cabelo": null,
-      "acessorio": null
+      "pelagem": "#b5a48f",
+      "cabelo": "#1f1712",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "cacheado",
+        "roupa": {
+          "cor": "#1f2937",
+          "padrao": "liso"
+        },
+        "barba": "#5c4a3a",
+        "sorriso": true
+      }
     },
     "tracos": {
       "aprendizagem": 1.35,
@@ -119,9 +148,17 @@
     "explore": 0.25,
     "noise": 0.2,
     "visual": {
-      "pelagem": "#c4a57a",
-      "cabelo": "#2f2f2f",
-      "acessorio": "gravata"
+      "pelagem": "#d8c3a5",
+      "cabelo": "#111111",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "liso-franja",
+        "roupa": {
+          "cor": "#e5e7eb",
+          "padrao": "liso"
+        },
+        "sorriso": true
+      }
     },
     "tracos": {
       "aprendizagem": 1.0,
@@ -136,7 +173,7 @@
   },
   {
     "id": "ana-carolina-ramos",
-    "name": "Ana Carolina Ramos",
+    "name": "Anna Ramos",
     "model": "keller",
     "papel": "Gerente de extinção",
     "descricao": "Aprende com um reforço só, mas a taxa oscila bastante. Tem cabelo vermelho e a melhor planilha do andar.",
@@ -146,9 +183,18 @@
     "maxRate": 55,
     "noise": 0.35,
     "visual": {
-      "pelagem": "#e0c3a0",
-      "cabelo": "#c0392b",
-      "acessorio": "cracha"
+      "pelagem": "#e3c9a8",
+      "cabelo": "#b4442b",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "cacheado",
+        "roupa": {
+          "cor": "#e0f2fe",
+          "padrao": "estampa",
+          "cor2": "#ea580c"
+        },
+        "brinco": "#ea580c"
+      }
     },
     "tracos": {
       "aprendizagem": 1.4,
