@@ -4,7 +4,7 @@ export type CabeloEstilo = 'topete' | 'curto' | 'cacheado' | 'liso-franja' | 'gr
 
 export interface Roupa {
   cor: string;
-  padrao?: 'liso' | 'listras' | 'estampa' | 'jaleco';
+  padrao?: 'liso' | 'listras' | 'risca' | 'estampa' | 'jaleco';
   cor2?: string;
 }
 
@@ -13,7 +13,8 @@ export interface Estilo {
   cabelo?: CabeloEstilo;
   roupa?: Roupa;
   barba?: string;
-  oculos?: 'grande';
+  bigode?: string;
+  oculos?: 'grande' | 'retangular';
   brinco?: string;
   sorriso?: boolean;
 }
@@ -431,6 +432,11 @@ export function paintRat(c: CanvasRenderingContext2D, look: RatLook, b: Behavior
     c.fill();
   }
 
+  if (estilo.bigode) {
+    c.fillStyle = estilo.bigode;
+    ellipse(c, 27, 9, 7, 2.6);
+  }
+
   if (look.cabelo) paintHair(c, look.cabelo, estilo.cabelo ?? 'topete');
 
   // olho
@@ -445,7 +451,18 @@ export function paintRat(c: CanvasRenderingContext2D, look: RatLook, b: Behavior
   } else {
     ellipse(c, 10, -4, 3.5, 3.5);
   }
-  if (look.acessorio === 'oculos' || estilo.oculos) {
+  if (estilo.oculos === 'retangular') {
+    // armação escura retangular com haste vermelha
+    c.strokeStyle = '#dc2626';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(1, -5);
+    c.lineTo(-7, -7);
+    c.stroke();
+    c.strokeStyle = '#111827';
+    c.lineWidth = 2.6;
+    c.strokeRect(1, -10, 18, 11);
+  } else if (look.acessorio === 'oculos' || estilo.oculos) {
     const big = estilo.oculos === 'grande';
     c.strokeStyle = big ? '#7c5a3a' : '#111827';
     c.lineWidth = big ? 3 : 2;
@@ -494,6 +511,10 @@ function paintClothes(c: CanvasRenderingContext2D, roupa: Roupa): void {
   if (roupa.padrao === 'listras') {
     c.fillStyle = roupa.cor2 ?? shade(roupa.cor, -40);
     for (let x = -26; x < 60; x += 9) c.fillRect(x, -32, 4, 64);
+  } else if (roupa.padrao === 'risca') {
+    // camisa social de risca fina
+    c.fillStyle = roupa.cor2 ?? shade(roupa.cor, -40);
+    for (let x = -26; x < 60; x += 5) c.fillRect(x, -32, 1.2, 64);
   } else if (roupa.padrao === 'estampa') {
     const cores = [roupa.cor2 ?? '#f97316', '#2563eb', '#facc15'];
     let i = 0;

@@ -11,9 +11,18 @@
     "maxRate": 50,
     "noise": 0.15,
     "visual": {
-      "pelagem": "#b9a48a",
-      "cabelo": null,
-      "acessorio": "gravata"
+      "pelagem": "#b5a48c",
+      "cabelo": "#f1f5f9",
+      "acessorio": "gravata",
+      "estilo": {
+        "cabelo": "cacheado",
+        "roupa": {
+          "cor": "#27272a",
+          "padrao": "liso"
+        },
+        "bigode": "#e5e7eb",
+        "sorriso": true
+      }
     },
     "tracos": {
       "aprendizagem": 1.0,
@@ -210,10 +219,10 @@
   },
   {
     "id": "funcionario",
-    "name": "Dwayne Rattington",
+    "name": "Fabrice",
     "model": "molar",
-    "papel": "Funcionário de escritório (original)",
-    "descricao": "Faz reuniões que atrapalham a coleta de dados e responde em rajadas quando alguém olha para ele.",
+    "papel": "Pesquisador jovem do laboratório",
+    "descricao": "Chega cheio de energia, quer testar tudo ao mesmo tempo e responde em rajadas quando alguém olha para ele.",
     "baseRate": 12,
     "maxRate": 70,
     "halfRate": 12,
@@ -221,8 +230,17 @@
     "noise": 0.5,
     "visual": {
       "pelagem": "#9c8a72",
-      "cabelo": "#8b5a2b",
-      "acessorio": "gravata"
+      "cabelo": "#3b2a20",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "liso-franja",
+        "roupa": {
+          "cor": "#1f2328",
+          "padrao": "liso"
+        },
+        "barba": "rgba(59,42,32,.35)",
+        "oculos": "retangular"
+      }
     },
     "tracos": {
       "aprendizagem": 0.8,
@@ -249,8 +267,16 @@
     "punishGain": 0.35,
     "visual": {
       "pelagem": "#b08968",
-      "cabelo": null,
-      "acessorio": "cracha"
+      "cabelo": "#e5e7eb",
+      "acessorio": null,
+      "estilo": {
+        "cabelo": "grisalho",
+        "roupa": {
+          "cor": "#f8fafc",
+          "padrao": "risca",
+          "cor2": "#94a3b8"
+        }
+      }
     },
     "tracos": {
       "aprendizagem": 1.1,
