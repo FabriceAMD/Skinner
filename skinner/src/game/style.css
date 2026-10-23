@@ -67,6 +67,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .rat-chip i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
 .rat-chip.on { border-color: var(--brand); background: #f3e8ff; }
 .home-links { display: flex; justify-content: center; gap: 12px; }
+.rat-preview { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.rat-preview canvas { width: 46%; height: auto; flex: none; border-radius: 12px; background: #fff7e6; }
+.rat-info { display: flex; flex-direction: column; min-width: 0; }
+.rat-info strong { font-size: 1.05rem; }
+.rat-info small { color: var(--brand); font-weight: 700; }
+.rat-info p { color: var(--muted); font-size: .85rem; margin-top: 4px; }
 .credits { text-align: center; color: var(--muted); font-size: .75rem; }
 
 /* ---------- jogo ---------- */

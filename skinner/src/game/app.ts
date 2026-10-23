@@ -3,7 +3,7 @@ import type { ScheduleSpec } from '../core/schedules';
 import { Sound } from './audio';
 import { Flow } from './flow';
 import { LIVRE, MISSIONS } from './missions';
-import { drawRecord, H, Renderer, W, type RatLook } from './render';
+import { drawRatPreview, drawRecord, H, Renderer, W, type RatLook } from './render';
 import { CHOICES, freshBrain, LABEL, Sim, type Behavior, type Brain, type ClickReport } from './sim';
 import { mountTicker } from './ticker';
 
@@ -98,6 +98,7 @@ class Game {
   private renderer: Renderer | null = null;
   private recordCanvas: HTMLCanvasElement | null = null;
   private rafId = 0;
+  private previewRaf = 0;
   private lastFrame: number | null = null;
   private seenEvents = 0;
   private lastPanel = 0;
@@ -161,12 +162,35 @@ class Game {
         <div class="m-row">${missions}</div>
         <p class="total">${total} / ${MISSIONS.length * 3} ★</p>
         <div class="rats">${rats}</div>
+        <div class="rat-preview card">
+          <canvas width="360" height="170" data-role="rat-preview" aria-label="${esc(this.rat.name)}"></canvas>
+          <div class="rat-info">
+            <strong>${esc(this.rat.name)}</strong>
+            <small>${esc(this.rat.papel)}</small>
+            <p>${esc(this.rat.descricao)}</p>
+          </div>
+        </div>
         <div class="home-links">
           <button class="link" data-action="free">🧪 laboratório livre</button>
           ${store.get<Brain>(brainKey(this.ratId)) ? '<button class="link" data-action="new-rat">🔄 rato novo</button>' : ''}
         </div>
         <footer class="credits">Inspirado no Sniffy (Alloway, Wilson e Graham) e no Training Game de Karen Pryor.</footer>
       </main>`;
+    this.startPreview();
+  }
+
+  /** Rato escolhido animado no menu, alternando comportamentos. */
+  private startPreview(): void {
+    cancelAnimationFrame(this.previewRaf);
+    const canvas = this.root.querySelector<HTMLCanvasElement>('[data-role=rat-preview]');
+    if (!canvas) return;
+    const look = lookOf(this.rat);
+    const tick = (now: number): void => {
+      if (!canvas.isConnected) return;
+      drawRatPreview(canvas, look, now);
+      this.previewRaf = requestAnimationFrame(tick);
+    };
+    this.previewRaf = requestAnimationFrame(tick);
   }
 
   // ---------------- jogo ----------------
@@ -417,6 +441,7 @@ class Game {
 
   private stop(): void {
     cancelAnimationFrame(this.rafId);
+    cancelAnimationFrame(this.previewRaf);
     if (this.sim) this.saveBrain();
     this.sim = null;
     this.flow = null;

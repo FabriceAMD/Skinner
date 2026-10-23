@@ -1,4 +1,4 @@
-import { BAR_X, FEEDER_X, type Sim } from './sim';
+import { BAR_X, FEEDER_X, type Behavior, type Sim } from './sim';
 
 export interface RatLook {
   pelagem: string;
@@ -159,137 +159,11 @@ export class Renderer {
 
   private drawRat(sim: Sim, look: RatLook, now: number): void {
     const c = this.ctx;
-    const b = sim.behavior;
-    const x = toPx(sim.x);
-    const t = now / 1000;
-    const walking = b === 'explorar' || b === 'comedouro' || b === 'aproximar';
-    const rearing = b === 'levantar' || b === 'apoiar' || b === 'pressionar';
-    const facing = b === 'cheirarBarra' || rearing && (b === 'apoiar' || b === 'pressionar') ? 1 : sim.dir;
-
     c.save();
-    c.translate(x, FLOOR - 4);
+    c.translate(toPx(sim.x), FLOOR - 4);
     // rato um pouco maior que o real, para ser visível no celular
-    c.scale(facing * RAT_SCALE, RAT_SCALE);
-    if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
-
-    // rabo
-    c.strokeStyle = '#e8a1a1';
-    c.lineWidth = 5;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-48, -22);
-    c.bezierCurveTo(-80, -10 + Math.sin(t * 4) * 6, -100, -40, -120, -30 + Math.sin(t * 3) * 8);
-    c.stroke();
-
-    const bodyAngle = rearing ? -1.0 : b === 'comer' || b === 'limpar' ? 0.15 : 0;
-    c.save();
-    // em pé, o corpo gira em torno das patas de trás, que ficam no piso
-    c.translate(-20, rearing ? -40 : -24);
-    c.rotate(bodyAngle);
-
-    // pernas
-    c.fillStyle = shade(look.pelagem, -25);
-    const step = walking ? Math.sin(t * 12) * 6 : 0;
-    for (const [lx, ph] of [[-22, 1], [26, -1]] as const) {
-      ellipse(c, lx + step * ph, 18, 9, 6);
-    }
-
-    // corpo
-    c.fillStyle = look.pelagem;
-    ellipse(c, 6, 0, 52, 30);
-    c.fillStyle = shade(look.pelagem, 18);
-    ellipse(c, 10, 8, 34, 16);
-
-    // acessórios no corpo
-    if (look.acessorio === 'gravata') {
-      c.fillStyle = '#b91c1c';
-      c.beginPath();
-      c.moveTo(36, -12);
-      c.lineTo(44, -12);
-      c.lineTo(42, -6);
-      c.lineTo(38, -6);
-      c.closePath();
-      c.fill();
-      c.beginPath();
-      c.moveTo(38, -6);
-      c.lineTo(42, -6);
-      c.lineTo(46, 16);
-      c.lineTo(40, 22);
-      c.lineTo(34, 16);
-      c.closePath();
-      c.fill();
-    }
-    if (look.acessorio === 'cracha') {
-      c.fillStyle = '#ffffff';
-      c.strokeStyle = '#64748b';
-      c.lineWidth = 2;
-      roundRect(c, 22, -4, 16, 20, 3);
-      c.fill();
-      c.stroke();
-      c.fillStyle = '#2563eb';
-      c.fillRect(24, -1, 12, 4);
-    }
-
-    // patas da frente
-    c.fillStyle = shade(look.pelagem, -25);
-    if (b === 'apoiar' || b === 'pressionar') {
-      const push = b === 'pressionar' ? Math.abs(Math.sin(t * 10)) * 6 : 0;
-      ellipse(c, 64, -6 + push, 10, 6);
-    } else if (b === 'limpar') {
-      ellipse(c, 58, -14 + Math.sin(t * 14) * 5, 8, 6);
-    } else {
-      ellipse(c, 44, 22, 8, 5);
-    }
-
-    // cabeça
-    const nod = b === 'farejar' || b === 'cheirarBarra' ? Math.sin(t * 18) * 3 : 0;
-    const headDown = b === 'comer' ? 14 : 0;
-    c.save();
-    c.translate(58, -10 + nod + headDown);
-    c.fillStyle = look.pelagem;
-    ellipse(c, 0, 0, 26, 20);
-    ellipse(c, 22, 6, 14, 11);
-    // orelha
-    c.fillStyle = '#f4b6b6';
-    ellipse(c, -6, -18, 10, 11);
-    // cabelo
-    if (look.cabelo) {
-      c.fillStyle = look.cabelo;
-      c.beginPath();
-      c.moveTo(-14, -14);
-      c.quadraticCurveTo(-4, -34, 14, -22);
-      c.quadraticCurveTo(4, -18, -2, -12);
-      c.closePath();
-      c.fill();
-    }
-    // olho
-    c.fillStyle = '#111827';
-    ellipse(c, 10, -4, 3.5, 3.5);
-    if (look.acessorio === 'oculos') {
-      c.strokeStyle = '#111827';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.arc(10, -4, 7, 0, Math.PI * 2);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(3, -4);
-      c.lineTo(-6, -6);
-      c.stroke();
-    }
-    // focinho e bigodes
-    c.fillStyle = '#e57b8b';
-    ellipse(c, 35, 6, 4, 3.5);
-    c.strokeStyle = 'rgba(55,65,81,.6)';
-    c.lineWidth = 1.2;
-    for (const dy of [-3, 2, 7]) {
-      c.beginPath();
-      c.moveTo(30, 6);
-      c.lineTo(50, 6 + dy * 1.5 + (b === 'farejar' ? Math.sin(t * 20) * 2 : 0));
-      c.stroke();
-    }
-    c.restore();
-
-    c.restore();
+    c.scale(RAT_SCALE, RAT_SCALE);
+    paintRat(c, look, sim.behavior, sim.dir, now / 1000);
     c.restore();
   }
 
@@ -392,4 +266,154 @@ export function drawRecord(canvas: HTMLCanvasElement, sim: Sim, from: number, wi
   }
   c.lineTo(x(sim.t), y(n));
   c.stroke();
+}
+
+/** Desenha o rato com as patas no ponto (0, 0). Usado na caixa e na prévia do menu. */
+export function paintRat(c: CanvasRenderingContext2D, look: RatLook, b: Behavior, dir: number, t: number): void {
+  const walking = b === 'explorar' || b === 'comedouro' || b === 'aproximar';
+const rearing = b === 'levantar' || b === 'apoiar' || b === 'pressionar';
+const facing = b === 'cheirarBarra' || b === 'apoiar' || b === 'pressionar' ? 1 : dir;
+
+c.save();
+c.scale(facing, 1);
+if (walking) c.translate(0, Math.abs(Math.sin(t * 12)) * -3);
+
+  // rabo
+  c.strokeStyle = '#e8a1a1';
+  c.lineWidth = 5;
+  c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(-48, -22);
+  c.bezierCurveTo(-80, -10 + Math.sin(t * 4) * 6, -100, -40, -120, -30 + Math.sin(t * 3) * 8);
+  c.stroke();
+
+  const bodyAngle = rearing ? -1.0 : b === 'comer' || b === 'limpar' ? 0.15 : 0;
+  c.save();
+  // em pé, o corpo gira em torno das patas de trás, que ficam no piso
+  c.translate(-20, rearing ? -40 : -24);
+  c.rotate(bodyAngle);
+
+  // pernas
+  c.fillStyle = shade(look.pelagem, -25);
+  const step = walking ? Math.sin(t * 12) * 6 : 0;
+  for (const [lx, ph] of [[-22, 1], [26, -1]] as const) {
+    ellipse(c, lx + step * ph, 18, 9, 6);
+  }
+
+  // corpo
+  c.fillStyle = look.pelagem;
+  ellipse(c, 6, 0, 52, 30);
+  c.fillStyle = shade(look.pelagem, 18);
+  ellipse(c, 10, 8, 34, 16);
+
+  // acessórios no corpo
+  if (look.acessorio === 'gravata') {
+    c.fillStyle = '#b91c1c';
+    c.beginPath();
+    c.moveTo(36, -12);
+    c.lineTo(44, -12);
+    c.lineTo(42, -6);
+    c.lineTo(38, -6);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(38, -6);
+    c.lineTo(42, -6);
+    c.lineTo(46, 16);
+    c.lineTo(40, 22);
+    c.lineTo(34, 16);
+    c.closePath();
+    c.fill();
+  }
+  if (look.acessorio === 'cracha') {
+    c.fillStyle = '#ffffff';
+    c.strokeStyle = '#64748b';
+    c.lineWidth = 2;
+    roundRect(c, 22, -4, 16, 20, 3);
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#2563eb';
+    c.fillRect(24, -1, 12, 4);
+  }
+
+  // patas da frente
+  c.fillStyle = shade(look.pelagem, -25);
+  if (b === 'apoiar' || b === 'pressionar') {
+    const push = b === 'pressionar' ? Math.abs(Math.sin(t * 10)) * 6 : 0;
+    ellipse(c, 64, -6 + push, 10, 6);
+  } else if (b === 'limpar') {
+    ellipse(c, 58, -14 + Math.sin(t * 14) * 5, 8, 6);
+  } else {
+    ellipse(c, 44, 22, 8, 5);
+  }
+
+  // cabeça
+  const nod = b === 'farejar' || b === 'cheirarBarra' ? Math.sin(t * 18) * 3 : 0;
+  const headDown = b === 'comer' ? 14 : 0;
+  c.save();
+  c.translate(58, -10 + nod + headDown);
+  c.fillStyle = look.pelagem;
+  ellipse(c, 0, 0, 26, 20);
+  ellipse(c, 22, 6, 14, 11);
+  // orelha
+  c.fillStyle = '#f4b6b6';
+  ellipse(c, -6, -18, 10, 11);
+  // cabelo
+  if (look.cabelo) {
+    c.fillStyle = look.cabelo;
+    c.beginPath();
+    c.moveTo(-14, -14);
+    c.quadraticCurveTo(-4, -34, 14, -22);
+    c.quadraticCurveTo(4, -18, -2, -12);
+    c.closePath();
+    c.fill();
+  }
+  // olho
+  c.fillStyle = '#111827';
+  ellipse(c, 10, -4, 3.5, 3.5);
+  if (look.acessorio === 'oculos') {
+    c.strokeStyle = '#111827';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(10, -4, 7, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(3, -4);
+    c.lineTo(-6, -6);
+    c.stroke();
+  }
+  // focinho e bigodes
+  c.fillStyle = '#e57b8b';
+  ellipse(c, 35, 6, 4, 3.5);
+  c.strokeStyle = 'rgba(55,65,81,.6)';
+  c.lineWidth = 1.2;
+  for (const dy of [-3, 2, 7]) {
+    c.beginPath();
+    c.moveTo(30, 6);
+    c.lineTo(50, 6 + dy * 1.5 + (b === 'farejar' ? Math.sin(t * 20) * 2 : 0));
+    c.stroke();
+  }
+  c.restore();
+
+  c.restore();
+  c.restore();
+}
+
+/** Prévia do rato no menu: ele alterna alguns comportamentos para mostrar o jeito dele. */
+const PREVIEW_CYCLE: Behavior[] = ['farejar', 'levantar', 'limpar', 'explorar', 'cheirarBarra'];
+
+export function drawRatPreview(canvas: HTMLCanvasElement, look: RatLook, now: number): void {
+  const c = canvas.getContext('2d');
+  if (!c) return;
+  const t = now / 1000;
+  const b = PREVIEW_CYCLE[Math.floor(t / 1.6) % PREVIEW_CYCLE.length];
+  c.clearRect(0, 0, canvas.width, canvas.height);
+  c.fillStyle = '#e8dcc6';
+  c.fillRect(0, canvas.height - 22, canvas.width, 22);
+  c.save();
+  // escala 1: cabe o rato inteiro, inclusive em pé, com a cauda à direita
+  c.translate(canvas.width / 2 - 10, canvas.height - 24);
+  c.scale(1, 1);
+  paintRat(c, look, b, -1, t);
+  c.restore();
 }
