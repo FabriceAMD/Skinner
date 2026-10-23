@@ -76,11 +76,10 @@ const lookOf = (rat: RatEntry): RatLook => ({
   acessorio: rat.visual.acessorio,
 });
 
-/** Ratos com aprendizagem mais rápida aprendem um pouco mais por reforço. */
-const learnOf = (rat: RatEntry): number => 0.8 + (rat.learnRate ?? 0.3);
-
 interface Progresso {
   estrelas: Record<string, number>;
+  /** Quantas personalidades já foram liberadas, na ordem da lista de ratos. Uma por ciclo completo. */
+  personalidades?: number;
 }
 
 export function startGame(root: HTMLElement): void {
@@ -125,6 +124,11 @@ class Game {
     return RATS.find(r => r.id === this.ratId) ?? RATS[0];
   }
 
+  /** No começo os ratos são só visuais; a personalidade vem depois, um rato por ciclo completo. */
+  private hasPersonality(rat: RatEntry): boolean {
+    return RATS.indexOf(rat) < (this.progress.personalidades ?? 0);
+  }
+
   private unlocked(index: number): boolean {
     return index === 0 || (this.progress.estrelas[MISSIONS[index - 1].id] ?? 0) > 0;
   }
@@ -149,8 +153,13 @@ class Game {
       </button>`;
     }).join('');
     const rats = RATS.map(
-      r => `<button class="rat-chip ${r.id === this.ratId ? 'on' : ''}" data-rat="${r.id}"><i style="background:${r.visual.pelagem}"></i>${esc(r.name)}</button>`,
+      r =>
+        `<button class="rat-chip ${r.id === this.ratId ? 'on' : ''}" data-rat="${r.id}"><i style="background:${r.visual.pelagem}"></i>${esc(r.name)}${this.hasPersonality(r) ? ' ✨' : ''}</button>`,
     ).join('');
+    const rat = this.rat;
+    const personality = this.hasPersonality(rat)
+      ? `<div class="traits">${rat.jeito.map(j => `<span>${esc(j)}</span>`).join('')}</div>`
+      : `<div class="traits locked"><span>🔒 personalidade · 🏁 termine as 6 fases</span></div>`;
 
     this.root.innerHTML = `
       <main class="home">
@@ -165,9 +174,9 @@ class Game {
         <div class="rat-preview card">
           <canvas width="360" height="170" data-role="rat-preview" aria-label="${esc(this.rat.name)}"></canvas>
           <div class="rat-info">
-            <strong>${esc(this.rat.name)}</strong>
-            <small>${esc(this.rat.papel)}</small>
-            <p>${esc(this.rat.descricao)}</p>
+            <strong>${esc(rat.name)}</strong>
+            <small>${esc(rat.papel)}</small>
+            ${personality}
           </div>
         </div>
         <div class="home-links">
@@ -198,7 +207,8 @@ class Game {
   private start(index: number): void {
     if (!this.sim) {
       const brain = store.get<Brain>(brainKey(this.ratId)) ?? freshBrain();
-      this.sim = new Sim(Math.floor(Math.random() * 1e9), brain, learnOf(this.rat));
+      const traits = this.hasPersonality(this.rat) ? this.rat.tracos : {};
+      this.sim = new Sim(Math.floor(Math.random() * 1e9), brain, traits);
     }
     this.flow = index >= 0 ? new Flow(index, this.sim) : new Flow(-1, this.sim, LIVRE);
     this.celebrateUntil = 0;
@@ -413,6 +423,19 @@ class Game {
     this.celebrateUntil = now + CELEBRATION_MS;
     const modal = this.root.querySelector<HTMLElement>('[data-role=modal]');
     if (!modal) return;
+    // ciclo completo: libera a personalidade do próximo rato
+    let unlockedRat: RatEntry | null = null;
+    if (flow.isLast) {
+      const count = this.progress.personalidades ?? 0;
+      if (count < RATS.length) {
+        unlockedRat = RATS[count];
+        this.progress.personalidades = count + 1;
+        store.set(KEY_PROGRESS, this.progress);
+      }
+    }
+    const unlockedHtml = unlockedRat
+      ? `<div class="unlock"><span>🔓 ${esc(unlockedRat.name)}</span><small>${unlockedRat.jeito.map(esc).join(' · ')}</small></div>`
+      : '';
     const total = Object.values(this.progress.estrelas).reduce((a, b) => a + b, 0);
     modal.classList.remove('hidden');
     modal.innerHTML = flow.isLast
@@ -421,6 +444,7 @@ class Game {
           <div class="big-stars">${stars(flow.result.stars)}</div>
           <p>${esc(m.licao)}</p>
           <p class="total">${total} / ${MISSIONS.length * 3} ★</p>
+          ${unlockedHtml}
           <div class="row"><button class="btn primary" data-action="free">🧪 laboratório livre</button><button class="btn" data-action="home">🏠</button></div>
         </div>`
       : `<div class="done card" data-action="next">

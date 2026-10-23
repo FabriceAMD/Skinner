@@ -73,6 +73,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .rat-info strong { font-size: 1.05rem; }
 .rat-info small { color: var(--brand); font-weight: 700; }
 .rat-info p { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+.traits { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.traits span { background: #f3e8ff; color: #4c1d95; border-radius: 999px; padding: 3px 8px; font-size: .78rem; font-weight: 700; }
+.traits.locked span { background: #f1f5f9; color: var(--muted); }
+.unlock { display: flex; flex-direction: column; gap: 2px; margin: 10px auto 0; padding: 10px 14px; border-radius: 14px; background: #fef9c3; }
+.unlock span { font-weight: 800; }
+.unlock small { color: var(--muted); }
 .credits { text-align: center; color: var(--muted); font-size: .75rem; }
 
 /* ---------- jogo ---------- */

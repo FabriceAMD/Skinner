@@ -121,4 +121,29 @@ describe('simulação do rato', () => {
     run(sim, 120);
     expect(sim.hunger).toBeLessThan(1);
   });
+
+  it('personalidade muda o comportamento: ritmo e saciedade', () => {
+    const switches = (ritmo: number): number => {
+      const sim = new Sim(8, undefined, { ritmo });
+      let n = 0;
+      let prev = sim.behavior;
+      while (sim.t < 180) {
+        sim.step(0.05);
+        if (sim.behavior !== prev) n++;
+        prev = sim.behavior;
+      }
+      return n;
+    };
+    expect(switches(0.7)).toBeGreaterThan(switches(1.3));
+
+    const hungerAfterPellets = (saciedade: number): number => {
+      const sim = new Sim(8, undefined, { saciedade });
+      for (let i = 0; i < 10; i++) {
+        sim.click();
+        run(sim, 3);
+      }
+      return sim.hunger;
+    };
+    expect(hungerAfterPellets(1.5)).toBeLessThan(hungerAfterPellets(0.7));
+  });
 });

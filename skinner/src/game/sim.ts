@@ -107,6 +107,23 @@ export interface Brain {
   hunger: number;
 }
 
+/**
+ * Personalidade do rato. Todos começam com o padrão (1 em tudo); a personalidade de cada um é desbloqueada
+ * no jogo. Valores acima de 1 aumentam o efeito.
+ */
+export interface Traits {
+  /** Quanto aprende por reforço. */
+  aprendizagem: number;
+  /** Duração dos comportamentos e lentidão ao andar: acima de 1 é mais calmo. */
+  ritmo: number;
+  /** Quanto cada pelota sacia. */
+  saciedade: number;
+  /** Interesse pela barra: chance de ir até ela e de cheirá-la. */
+  curiosidade: number;
+}
+
+export const DEFAULT_TRAITS: Traits = { aprendizagem: 1, ritmo: 1, saciedade: 1, curiosidade: 1 };
+
 export function freshBrain(): Brain {
   return { w: { on: { ...BASE }, off: { ...BASE } }, vMag: 0.05, hunger: 1 };
 }
@@ -169,10 +186,13 @@ export class Sim {
   private favX = 0.5;
   private placeStrength = 0;
 
-  constructor(seed: number, brain: Brain = freshBrain(), learn = 1) {
+  private readonly traits: Traits;
+
+  constructor(seed: number, brain: Brain = freshBrain(), traits: Partial<Traits> = {}) {
     this.rng = mulberry32(seed);
     this.brain = brain;
-    this.learn = learn;
+    this.traits = { ...DEFAULT_TRAITS, ...traits };
+    this.learn = this.traits.aprendizagem;
     this.trace = Object.fromEntries([...CHOICES, 'comer'].map(b => [b, 0])) as Record<Behavior, number>;
     this.lastActive = Object.fromEntries([...CHOICES, 'comer'].map(b => [b, -Infinity])) as Record<Behavior, number>;
     this.pick();
@@ -402,7 +422,8 @@ export class Sim {
       return;
     }
     this.dir = Math.sign(d);
-    this.x += Math.sign(d) * Math.min(Math.abs(d), SPEED * dt * (this.behavior === 'explorar' ? 0.6 : 1));
+    const speed = (SPEED / this.traits.ritmo) * (this.behavior === 'explorar' ? 0.6 : 1);
+    this.x += Math.sign(d) * Math.min(Math.abs(d), speed * dt);
   }
 
   private endBehavior(): void {
@@ -424,14 +445,15 @@ export class Sim {
     this.reinforce(this.value() * 0.5 * (1 - this.brain.vMag));
     const rate = sinceClick < 3 ? 0.3 : 0.1;
     this.brain.vMag += rate * (1 - this.brain.vMag);
-    this.brain.hunger = Math.max(0, this.brain.hunger - SATIETY_PER_PELLET);
+    this.brain.hunger = Math.max(0, this.brain.hunger - SATIETY_PER_PELLET * this.traits.saciedade);
     if (this.pellets === 0) this.feedAt = Infinity;
   }
 
   private pick(): void {
     const w = this.brain.w[this.context];
     const lazy = 0.4 + 0.6 * this.brain.hunger;
-    const weights = CHOICES.map(b => w[b] * (b === 'limpar' ? 1 : lazy));
+    const curious = (b: Choice): number => (b === 'aproximar' || b === 'cheirarBarra' ? this.traits.curiosidade : 1);
+    const weights = CHOICES.map(b => w[b] * (b === 'limpar' ? 1 : lazy) * curious(b));
     // indução pela extinção: segurar o reforço faz aparecer o passo seguinte ao que vinha sendo reforçado
     const link = this.lastReinforced ? CHAIN.indexOf(this.lastReinforced) : -1;
     if (link >= 0 && link < CHAIN.length - 1) {
@@ -463,7 +485,7 @@ export class Sim {
     if (b !== 'aproximar') this.intent = null;
     this.behavior = b;
     const jitter = 0.6 + this.rng() * 0.8;
-    this.behaviorEnd = this.t + DURATION[b] * jitter;
+    this.behaviorEnd = this.t + DURATION[b] * jitter * this.traits.ritmo;
     if (b === 'explorar') {
       this.targetX =
         this.rng() < this.placeStrength

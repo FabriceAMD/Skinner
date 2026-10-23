@@ -21,6 +21,9 @@ clicar, tem só um intervalo mecânico curto e pulsa (e vibra) se a pessoa demor
 
 E um **laboratório livre** com esquemas (CRF, FR, VR, VI, FI, extinção) e luz.
 
+**Ratos:** no começo todos são só visuais e se comportam igual. Cada ciclo completo (as 6 fases) libera a
+personalidade do próximo rato da lista: aprendizagem, ritmo, saciedade e curiosidade pela barra.
+
 ## Teste com jogador simulado (`tests/persona`)
 
 Um jogador de 20 e poucos anos no celular, que não lê instruções e para em 5 minutos: toca quando o botão

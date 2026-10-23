@@ -14,7 +14,17 @@
       "pelagem": "#b9a48a",
       "cabelo": null,
       "acessorio": "gravata"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.0,
+      "ritmo": 1.25,
+      "saciedade": 0.8,
+      "curiosidade": 1.0
+    },
+    "jeito": [
+      "🐢 calmo",
+      "🍽️ demora a se saciar"
+    ]
   },
   {
     "id": "molar",
@@ -31,7 +41,17 @@
       "pelagem": "#8e8e8e",
       "cabelo": null,
       "acessorio": "gravata"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 0.9,
+      "ritmo": 1.0,
+      "saciedade": 1.0,
+      "curiosidade": 1.2
+    },
+    "jeito": [
+      "🔍 curioso pela barra",
+      "📉 aprende um pouco devagar"
+    ]
   },
   {
     "id": "carolina-bori",
@@ -48,7 +68,17 @@
       "pelagem": "#d9c7a7",
       "cabelo": "#5b3a29",
       "acessorio": "oculos"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.25,
+      "ritmo": 1.1,
+      "saciedade": 1.0,
+      "curiosidade": 1.0
+    },
+    "jeito": [
+      "🧠 aprende rápido",
+      "🐢 calma"
+    ]
   },
   {
     "id": "helder",
@@ -65,7 +95,17 @@
       "pelagem": "#a3a0a0",
       "cabelo": null,
       "acessorio": null
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.35,
+      "ritmo": 1.0,
+      "saciedade": 1.3,
+      "curiosidade": 0.9
+    },
+    "jeito": [
+      "🧠 aprende muito rápido",
+      "😋 se sacia fácil"
+    ]
   },
   {
     "id": "olga-kubo",
@@ -82,7 +122,17 @@
       "pelagem": "#c4a57a",
       "cabelo": "#2f2f2f",
       "acessorio": "gravata"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.0,
+      "ritmo": 0.8,
+      "saciedade": 1.0,
+      "curiosidade": 1.35
+    },
+    "jeito": [
+      "⚡ agitada",
+      "🔍 muito curiosa pela barra"
+    ]
   },
   {
     "id": "ana-carolina-ramos",
@@ -99,7 +149,18 @@
       "pelagem": "#e0c3a0",
       "cabelo": "#c0392b",
       "acessorio": "cracha"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.4,
+      "ritmo": 0.85,
+      "saciedade": 1.3,
+      "curiosidade": 1.0
+    },
+    "jeito": [
+      "🧠 aprende rápido",
+      "⚡ agitada",
+      "😋 se sacia fácil"
+    ]
   },
   {
     "id": "funcionario",
@@ -116,7 +177,17 @@
       "pelagem": "#9c8a72",
       "cabelo": "#8b5a2b",
       "acessorio": "gravata"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 0.8,
+      "ritmo": 0.7,
+      "saciedade": 1.0,
+      "curiosidade": 0.85
+    },
+    "jeito": [
+      "⚡ muito agitado",
+      "📉 aprende devagar"
+    ]
   },
   {
     "id": "botome",
@@ -134,6 +205,16 @@
       "pelagem": "#b08968",
       "cabelo": null,
       "acessorio": "cracha"
-    }
+    },
+    "tracos": {
+      "aprendizagem": 1.1,
+      "ritmo": 1.3,
+      "saciedade": 0.9,
+      "curiosidade": 0.8
+    },
+    "jeito": [
+      "🐢 bem calmo",
+      "🙈 pouco interesse pela barra"
+    ]
   }
 ]

@@ -7,6 +7,10 @@ export interface RatEntry extends RatConfig {
   papel: string;
   descricao: string;
   visual: { pelagem: string; cabelo: string | null; acessorio: Acessorio };
+  /** Personalidade no jogo, liberada aos poucos. */
+  tracos: { aprendizagem: number; ritmo: number; saciedade: number; curiosidade: number };
+  /** Traços em palavras curtas, mostrados na prévia quando a personalidade está liberada. */
+  jeito: string[];
 }
 
 export const RATS: RatEntry[] = ratsRaw as RatEntry[];
