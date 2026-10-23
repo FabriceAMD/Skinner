@@ -1,4 +1,4 @@
-import { BAR_X, FEEDER_X, type Behavior, type Sim } from './sim';
+import { BAR_X, type Behavior, type Sim, type SimEvent } from './sim';
 
 export interface RatLook {
   pelagem: string;
@@ -56,6 +56,7 @@ export class Renderer {
     c.clearRect(0, 0, W, H);
     this.drawBox(sim);
     this.drawRat(sim, look, now);
+    this.drawFlash(sim);
     this.drawEffects(now);
   }
 
@@ -72,9 +73,9 @@ export class Renderer {
     c.lineWidth = 4;
     c.stroke();
 
-    // painel de metal com comedouro e barra
+    // painel de metal com a barra
     c.fillStyle = '#c9d2dc';
-    roundRect(c, toPx(FEEDER_X) - 60, 120, toPx(BAR_X) - toPx(FEEDER_X) + 130, FLOOR - 120, 10);
+    roundRect(c, toPx(BAR_X) - 70, 120, 140, FLOOR - 120, 10);
     c.fill();
 
     // piso de grades
@@ -89,41 +90,36 @@ export class Renderer {
       c.stroke();
     }
 
-    // comedouro
-    const fx = toPx(FEEDER_X);
-    c.fillStyle = '#6b7785';
-    roundRect(c, fx - 34, FLOOR - 46, 68, 46, 8);
-    c.fill();
-    c.fillStyle = '#3d4651';
-    roundRect(c, fx - 26, FLOOR - 36, 52, 30, 6);
-    c.fill();
-    for (let i = 0; i < sim.pellets; i++) {
-      c.fillStyle = '#b45309';
-      c.beginPath();
-      c.arc(fx - 12 + i * 12, FLOOR - 14, 6, 0, Math.PI * 2);
-      c.fill();
-    }
-    // tubo do alimentador e alto-falante do clique
+    // dispensador no teto: a pelota cai onde o rato estiver
     c.fillStyle = '#8b96a3';
-    c.fillRect(fx - 6, 130, 12, FLOOR - 176);
-    c.fillStyle = '#4b5563';
-    c.beginPath();
-    c.arc(fx, 150, 16, 0, Math.PI * 2);
+    roundRect(c, 44, 34, W - 88, 16, 6);
     c.fill();
+    c.fillStyle = '#6b7785';
+    for (let x = 60; x < W - 60; x += 30) c.fillRect(x, 46, 10, 5);
+
     const lastClick = lastEventTime(sim, 'click');
-    if (sim.t - lastClick < 0.5) {
-      const k = (sim.t - lastClick) / 0.5;
-      c.strokeStyle = `rgba(124,58,237,${1 - k})`;
-      c.lineWidth = 4;
-      for (const r of [24, 36]) {
-        c.beginPath();
-        c.arc(fx, 150, r + k * 20, -0.9, 0.9);
-        c.stroke();
-      }
+    const since = sim.t - lastClick;
+    // LED e "clique!" no canto do dispensador
+    c.fillStyle = since < 0.4 ? '#22c55e' : '#cbd5e1';
+    c.beginPath();
+    c.arc(W - 70, 42, 7, 0, Math.PI * 2);
+    c.fill();
+    if (since < 0.5) {
+      const k = since / 0.5;
       c.fillStyle = `rgba(124,58,237,${1 - k})`;
       c.font = 'bold 22px system-ui, sans-serif';
       c.textAlign = 'center';
-      c.fillText('clique!', fx, 110 - k * 20);
+      c.fillText('clique!', W - 70, 82 - k * 16);
+    }
+
+    // pelotas: caem do teto e ficam no chão até ele comer
+    for (const drop of pelletsOnFloor(sim)) {
+      const fall = Math.min(1, (sim.t - drop.t) / 0.25);
+      const y = 50 + (FLOOR - 58) * fall * fall;
+      c.fillStyle = '#b45309';
+      c.beginPath();
+      c.arc(toPx(drop.x ?? 0.5), y, 7, 0, Math.PI * 2);
+      c.fill();
     }
 
     // luz de estímulo
@@ -154,6 +150,24 @@ export class Renderer {
     c.restore();
     c.fillStyle = '#1f2937';
     roundRect(c, bx + 24, LEVER_Y - 22, 18, 44, 4);
+    c.fill();
+  }
+
+  /** Clarão verde no instante do reforço: o jogador vê que o clique valeu. */
+  private drawFlash(sim: Sim): void {
+    const since = sim.t - lastEventTime(sim, 'click');
+    if (since > 0.35) return;
+    const c = this.ctx;
+    const k = 1 - since / 0.35;
+    c.fillStyle = `rgba(34,197,94,${0.18 * k})`;
+    c.fillRect(30, 30, W - 60, FLOOR - 30);
+    const x = toPx(sim.x);
+    const glow = c.createRadialGradient(x, FLOOR - 50, 10, x, FLOOR - 50, 160);
+    glow.addColorStop(0, `rgba(34,197,94,${0.45 * k})`);
+    glow.addColorStop(1, 'rgba(34,197,94,0)');
+    c.fillStyle = glow;
+    c.beginPath();
+    c.arc(x, FLOOR - 50, 160, 0, Math.PI * 2);
     c.fill();
   }
 
@@ -189,6 +203,16 @@ export class Renderer {
       c.globalAlpha = 1;
     });
   }
+}
+
+/** As últimas `sim.pellets` pelotas soltas são as que ainda estão no chão. */
+function pelletsOnFloor(sim: Sim): SimEvent[] {
+  if (sim.pellets === 0) return [];
+  const drops: SimEvent[] = [];
+  for (let i = sim.events.length - 1; i >= 0 && drops.length < sim.pellets; i--) {
+    if (sim.events[i].kind === 'drop') drops.push(sim.events[i]);
+  }
+  return drops;
 }
 
 function lastEventTime(sim: Sim, kind: 'press' | 'click'): number {

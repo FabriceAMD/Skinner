@@ -33,7 +33,8 @@ export interface Mission {
   deixa: 'pronto' | 'alvo' | null;
   /** Segundos reais para 3 e 2 estrelas. */
   estrelas: [number, number];
-  progresso(sim: Sim, inicio: number): Progress;
+  /** `etapa`: índice da etapa de modelagem em curso (só a modelagem usa). */
+  progresso(sim: Sim, inicio: number, etapa?: number): Progress;
 }
 
 const pressesSince = (sim: Sim, from: number): number => sim.events.filter(e => e.kind === 'press' && e.t >= from).length;
@@ -43,16 +44,17 @@ export const MISSIONS: Mission[] = [
     id: 'clique',
     icone: '🔔',
     titulo: 'Clique = comida',
-    licao: 'O clique virou reforçador condicionado: agora ele reforça na hora, sem esperar a comida.',
+    licao: 'O clique virou reforçador condicionado: pareado com a comida, agora ele reforça na hora.',
     cliqueManual: true,
     esquema: null,
     luz: null,
-    velocidade: 1.5,
+    velocidade: 1,
     alvos: [],
     deixa: 'pronto',
     estrelas: [30, 60],
     // termina quando ele corre ao comedouro ao ouvir o clique e o clique já vale como reforço
-    progresso: sim => ({ value: Math.min(sim.orientStreak, 4) * (sim.vMag >= 0.6 ? 1 : 0.75), goal: 4 }),
+    // termina quando o clique já vale como reforço (pareamento clique → comida)
+    progresso: sim => ({ value: Math.min(sim.vMag, 0.7), goal: 0.7 }),
   },
   {
     id: 'modelagem',
@@ -72,11 +74,14 @@ export const MISSIONS: Mission[] = [
     alvos: [],
     deixa: 'alvo',
     estrelas: [75, 120],
-    // termina quando o estudante reforça 3 pressões na hora certa ou quando o rato já pressiona 3 vezes por minuto
-    progresso: (sim, inicio) => {
+    // só termina depois de passar pelas etapas: na última (⬇️), 3 pressões reforçadas ou 4 pressões por minuto
+    progresso: (sim, inicio, etapa = 0) => {
       const reforcadas = sim.reports.filter(r => r.t >= inicio && r.reinforced === 'pressionar' && r.points > 0).length;
       const porMinuto = sim.events.filter(e => e.kind === 'press' && e.t >= Math.max(inicio, sim.t - 60)).length;
-      return { value: Math.min(Math.max(reforcadas, porMinuto), 3), goal: 3 };
+      const naUltima = etapa >= 3;
+      const pressao = Math.min(Math.max(reforcadas, porMinuto * 0.75), 3);
+      // a barra avança com as etapas (até 60%) e o resto com as pressões na última etapa
+      return { value: naUltima ? 1.8 + 0.4 * pressao : Math.min(etapa, 3) * 0.6, goal: 3 };
     },
   },
   {
@@ -129,7 +134,7 @@ export const MISSIONS: Mission[] = [
     cliqueManual: false,
     esquema: { kind: 'VI', ms: 5000 },
     luz: 20,
-    velocidade: 10,
+    velocidade: 8,
     alvos: [],
     deixa: null,
     estrelas: [Infinity, Infinity],

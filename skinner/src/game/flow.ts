@@ -8,6 +8,8 @@ const HITS_PER_STEP = 2;
 const STEP_BACK_AFTER = 45;
 /** Depois disso (segundos reais) na mesma fase, a deixa fica mais chamativa. */
 const STRONG_CUE_AFTER = 60;
+/** Intervalo mecânico do alimentador, em segundos reais. */
+const FEEDER_COOLDOWN = 0.35;
 
 export interface Result {
   stars: number;
@@ -29,6 +31,7 @@ export class Flow {
   speedOverride: number | null = null;
   private stepHits = 0;
   private lastHit = 0;
+  private lastClickReal = -Infinity;
   private pending = 0;
 
   /** `index` é a posição em MISSIONS; -1 para o laboratório livre. */
@@ -54,14 +57,14 @@ export class Flow {
   }
 
   progress(): Progress {
-    return this.mission.progresso(this.sim, this.startT);
+    return this.mission.progresso(this.sim, this.startT, this.stepIndex);
   }
 
   /** O botão acende quando é uma boa hora de clicar. É a única instrução que o jogador precisa. */
   cue(): boolean {
     const { sim, mission } = this;
     if (!mission.cliqueManual || this.result) return false;
-    if (mission.deixa === 'pronto') return sim.pellets === 0 && sim.behavior !== 'comer' && sim.behavior !== 'comedouro';
+    if (mission.deixa === 'pronto') return this.canClick;
     if (mission.deixa === 'alvo') {
       if (sim.pellets > 0) return false;
       // na etapa final, a barra descer é a deixa, mesmo que tenha sido ao apoiar
@@ -77,9 +80,19 @@ export class Flow {
     return this.realElapsed > STRONG_CUE_AFTER;
   }
 
-  /** Com pelota esperando no comedouro, o botão fica bloqueado: o rato ainda nem comeu a última. */
+  /**
+   * O alimentador só tem um intervalo mecânico curto. Ele não solta outra pelota enquanto o rato come
+   * ou ainda tem uma no chão: entrega no vazio não pareia nada.
+   */
   get canClick(): boolean {
-    return this.mission.cliqueManual && !this.result && this.sim.pellets === 0;
+    const { sim } = this;
+    return (
+      this.mission.cliqueManual &&
+      !this.result &&
+      sim.pellets === 0 &&
+      sim.behavior !== 'comer' &&
+      this.realElapsed - this.lastClickReal >= FEEDER_COOLDOWN
+    );
   }
 
   /** Etapa com zona: qualquer comportamento (menos comer) com o rato perto da barra vale. */
@@ -93,6 +106,7 @@ export class Flow {
   click(): ClickReport | null {
     if (!this.canClick) return null;
     const zoneHit = this.inZone();
+    this.lastClickReal = this.realElapsed;
     const report = this.sim.click('aluno');
     if (zoneHit && report.points === 0 && report.quality !== 'sem-efeito') report.points = 50;
     this.score += report.points;

@@ -7,7 +7,7 @@ import { drawRatPreview, drawRecord, H, Renderer, W, type RatLook } from './rend
 import { CHOICES, freshBrain, LABEL, Sim, type Behavior, type Brain, type ClickReport } from './sim';
 import { mountTicker } from './ticker';
 
-const SPEEDS = [1, 2, 4];
+const SPEEDS = [1, 2, 4, 8];
 const CELEBRATION_MS = 2500;
 
 const KEY_PROGRESS = 'cs2:progresso';
@@ -46,7 +46,7 @@ const EMOJI: Record<Behavior, string> = {
   farejar: '👃',
   levantar: '🧍',
   limpar: '🧼',
-  comedouro: '🍽️',
+  comedouro: '🔎',
   aproximar: '➡️',
   cheirarBarra: '👃',
   apoiar: '🐾',
@@ -222,7 +222,7 @@ class Game {
           <button class="icon" data-action="sound" aria-label="som">${this.sound.enabled ? '🔊' : '🔇'}</button>
         </header>
 
-        <div class="goal">
+        <div class="goal" ${free ? 'hidden' : ''}>
           <div class="steps" data-role="steps"></div>
           <div class="progress"><i data-role="goal-bar"></i></div>
         </div>
@@ -238,15 +238,15 @@ class Game {
             : `<canvas class="mini-record" width="640" height="150" data-role="mini-record" aria-label="registro cumulativo"></canvas>`}
         </div>
 
+        <div class="speedbar" data-role="speedbar">
+          <button class="icon" data-action="pause" aria-label="pausar">${this.paused ? '▶' : '⏸'}</button>
+          ${SPEEDS.map(v => `<button class="pill" data-speed="${v}">${v}×</button>`).join('')}
+        </div>
+
         ${free ? this.freeControls() : ''}
 
         <details class="more">
-          <summary>🧠 mente do rato · 📈 registro · ⏩ velocidade</summary>
-          <div class="speed">
-            <button class="icon" data-action="pause">${this.paused ? '▶' : '⏸'}</button>
-            ${SPEEDS.map(s => `<button class="pill ${flow.speedOverride === s ? 'on' : ''}" data-speed="${s}">${s}×</button>`).join('')}
-            <button class="pill ${flow.speedOverride === null ? 'on' : ''}" data-speed="auto">auto</button>
-          </div>
+          <summary>🧠 mente do rato · 📈 registro</summary>
           <nav class="tabs">
             <button data-tab="mente" class="${this.tab === 'mente' ? 'on' : ''}">🧠 mente</button>
             <button data-tab="registro" class="${this.tab === 'registro' ? 'on' : ''}">📈 registro</button>
@@ -339,6 +339,8 @@ class Game {
     if (behavior) behavior.textContent = `${EMOJI[sim.behavior]} ${LABEL[sim.behavior]}`;
     const badge = q<HTMLElement>('[data-role=speed-badge]');
     if (badge) badge.textContent = flow.speed > 1 ? `⏩ ${flow.speed}×` : '';
+    // a velocidade em uso fica marcada, seja a da fase, seja a escolhida pelo jogador
+    this.root.querySelectorAll<HTMLElement>('[data-speed]').forEach(b => b.classList.toggle('on', Number(b.dataset.speed) === flow.speed));
 
     // etapas da modelagem em ícones; nas outras fases, só o ícone da fase
     const steps = q<HTMLElement>('[data-role=steps]');
@@ -466,8 +468,7 @@ class Game {
       return;
     }
     if (el.dataset.speed && this.flow) {
-      this.flow.speedOverride = el.dataset.speed === 'auto' ? null : Number(el.dataset.speed);
-      this.root.querySelectorAll<HTMLElement>('[data-speed]').forEach(b => b.classList.toggle('on', b === el));
+      this.flow.speedOverride = Number(el.dataset.speed);
       return;
     }
     if (el.dataset.tab) {
@@ -524,7 +525,8 @@ class Game {
 /** Texto curto do que o clique fez, para aparecer em cima do rato. */
 function describe(report: ClickReport, scoring: boolean): { text: string; color: string } {
   const what = `${EMOJI[report.reinforced]} ${LABEL[report.reinforced]}`;
-  if (report.quality === 'sem-efeito') return { text: '🔔 ?', color: '#64748b' };
+  // primeiro clique de um rato novo: clique e comida ainda se associando
+  if (report.quality === 'sem-efeito') return { text: '🔔…😋', color: '#64748b' };
   if (!scoring) return { text: `+ ${what}`, color: '#7c3aed' };
   if (report.points === 0) return { text: `😬 ${what}`, color: '#ea580c' };
   if (report.quality === 'perfeito') return { text: `✨ ${what}`, color: '#15803d' };

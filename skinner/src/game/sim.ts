@@ -7,8 +7,9 @@ import { createSchedule, formatSpec, type Schedule, type ScheduleSpec } from '..
  * Princípios (Sniffy, Pryor):
  * - Comportamentos têm força; o rato escolhe o próximo comportamento em proporção à força.
  * - Reforço fortalece o que veio logo antes dele (traço de elegibilidade que decai em ~1 s).
- * - O clique vira reforçador condicionado só depois do treino de comedouro (vMag, Rescorla-Wagner).
- *   Antes disso, quem reforça é a comida, que chega atrasada e fortalece "ir ao comedouro".
+ * - O clique solta uma pelota do teto, no ponto onde o rato está. Ele termina o gesto em curso e come ali.
+ * - O clique vira reforçador condicionado com o pareamento clique → comida (vMag, Rescorla-Wagner).
+ * - Sem reforço por alguns segundos, a variação se concentra no próximo passo da cadeia (indução pela extinção).
  * - Saciedade: cada pelota sacia; reforço vale menos com o rato saciado.
  * - Extinção: pressão sem reforço perde força e gera frustração (surto de extinção).
  */
@@ -45,7 +46,7 @@ export const LABEL: Record<Behavior, string> = {
   farejar: 'farejar',
   levantar: 'levantar',
   limpar: 'se limpar',
-  comedouro: 'ir ao comedouro',
+  comedouro: 'procurar comida',
   aproximar: 'ir até a barra',
   cheirarBarra: 'cheirar a barra',
   apoiar: 'apoiar na barra',
@@ -70,11 +71,11 @@ const AT_BAR: Choice[] = ['cheirarBarra', 'apoiar', 'pressionar'];
 const CHAIN: Choice[] = ['aproximar', 'cheirarBarra', 'apoiar', 'pressionar'];
 const INDUCTION = 0.7;
 const DURATION: Record<Behavior, number> = {
-  explorar: 4.0,
-  farejar: 2.8,
-  levantar: 2.6,
-  limpar: 4.5,
-  comedouro: 2.0,
+  explorar: 3.0,
+  farejar: 2.1,
+  levantar: 1.9,
+  limpar: 3.4,
+  comedouro: 1.5,
   aproximar: 0.6,
   cheirarBarra: 2.2,
   apoiar: 2.4,
@@ -82,8 +83,6 @@ const DURATION: Record<Behavior, number> = {
   comer: 1.2,
 };
 
-/** Comedouro ao lado da barra, como numa caixa de Skinner real. */
-export const FEEDER_X = 0.62;
 export const BAR_X = 0.86;
 const NEAR = 0.07;
 const SPEED = 0.25; // larguras da caixa por segundo (rato calmo, fácil de acompanhar)
@@ -94,8 +93,6 @@ const MAX_W = 8;
 const TOTAL_CAP = 14;
 const MIN_W = 0.02;
 const PRESS_EVERY = 0.55;
-/** Orientação que não termina em comida nesse tempo (segundos de rato) deixa de contar. */
-const ORIENT_WINDOW = 8;
 const SATIETY_PER_PELLET = 0.02;
 const EXTINCTION = 0.12;
 /** Quanto o reforço numa luz vale na outra. */
@@ -127,9 +124,11 @@ export interface ClickReport {
 
 export interface SimEvent {
   t: number;
-  kind: 'press' | 'click' | 'eat' | 'light';
+  kind: 'press' | 'click' | 'eat' | 'light' | 'drop';
   source?: 'aluno' | 'automatico';
   on?: boolean;
+  /** Onde a pelota caiu (0 a 1), em eventos `drop`. */
+  x?: number;
 }
 
 export class Sim {
@@ -144,8 +143,6 @@ export class Sim {
   readonly reports: ClickReport[] = [];
   /** Comportamentos que contam ponto na missão atual. */
   targets: Behavior[] = [];
-  /** Cliques seguidos em que o rato foi comer em até 2 s. */
-  orientStreak = 0;
   frustration = 0;
   scheduleSpec: ScheduleSpec | null = null;
 
@@ -163,7 +160,10 @@ export class Sim {
   private expectation: Record<'on' | 'off', number> = { on: 0, off: 0 };
   private reinforcedPresses: Record<'on' | 'off', number> = { on: 0, off: 0 };
   private lastClick = -Infinity;
-  private orientPending: number | null = null;
+  /** Quando o rato para para comer: termina o gesto em curso antes (compromisso motor). */
+  private feedAt = Infinity;
+  /** Último comportamento reforçado; a extinção faz variar em torno do passo seguinte a ele. */
+  private lastReinforced: Choice | null = null;
   private schedule: Schedule | null = null;
   /** Preferência por lugar: onde o rato costuma ganhar reforço, e o quanto isso puxa a exploração. */
   private favX = 0.5;
@@ -218,6 +218,7 @@ export class Sim {
     this.events.push({ t: this.t, kind: 'click', source });
     this.pellets = Math.min(3, this.pellets + 1);
     this.lastClick = this.t;
+    this.events.push({ t: this.t, kind: 'drop', x: this.x });
     if (this.behavior === 'pressionar' || this.t - this.lastPressTime() < 1) this.lastPressReinforced = true;
 
     const reinforced = this.dominant();
@@ -228,7 +229,7 @@ export class Sim {
     this.placeStrength = Math.min(0.7, this.placeStrength + 0.15 * value);
 
     let quality: Quality;
-    if (this.brain.vMag < 0.3) quality = 'sem-efeito';
+    if (this.brain.vMag < 0.15) quality = 'sem-efeito';
     else if (delay < 0.6) quality = 'perfeito';
     else if (delay < 1.6) quality = 'bom';
     else quality = 'tarde';
@@ -237,17 +238,12 @@ export class Sim {
     const report: ClickReport = { t: this.t, reinforced, delay, quality, points, source };
     this.reports.push(report);
 
-    // rato que entende o clique vai direto ao comedouro; som novo chama atenção mesmo antes (reflexo de orientação).
-    // A sequência conta orientações: correr ao comedouro ao ouvir o clique, não importa de onde.
-    // clique durante a comida não conta nem a favor nem contra: o rato já está no comedouro
+    if (reinforced !== 'comer') this.lastReinforced = reinforced;
+
+    // a pelota cai onde ele está; gesto dirigido à barra termina antes, o resto para logo
     if (this.behavior !== 'comer') {
-      if (this.rng() < Math.max(0.25, this.brain.vMag)) {
-        this.start('comedouro');
-        this.orientPending = this.t;
-      } else {
-        this.orientPending = null;
-        this.orientStreak = 0;
-      }
+      const chain = CHAIN.includes(this.behavior as Choice);
+      this.feedAt = Math.min(this.feedAt, this.t + (chain ? Math.min(0.6, this.behaviorEnd - this.t) : 0.25));
     }
     return report;
   }
@@ -264,11 +260,6 @@ export class Sim {
     this.placeStrength *= Math.exp(-dt / 120);
     this.drift(dt);
 
-    if (this.orientPending !== null && this.t - this.orientPending > ORIENT_WINDOW) {
-      this.orientStreak = 0;
-      this.orientPending = null;
-    }
-
     this.move(dt);
     let pressed = false;
     const canPress = this.behavior === 'pressionar' || this.behavior === 'apoiar';
@@ -284,10 +275,7 @@ export class Sim {
       this.click('automatico');
     }
 
-    // achar pelota passando pelo comedouro
-    if (this.pellets > 0 && this.behavior !== 'comer' && Math.abs(this.x - FEEDER_X) < NEAR && this.rng() < 2 * dt) {
-      this.start('comer');
-    }
+    if (this.pellets > 0 && this.behavior !== 'comer' && this.t >= this.feedAt) this.start('comer');
 
     if (this.t >= this.behaviorEnd) this.endBehavior();
   }
@@ -309,6 +297,8 @@ export class Sim {
       for (const b of ['aproximar', 'cheirarBarra', 'apoiar'] as const) w[b] -= (k / 2) * (w[b] - BASE[b]);
       this.frustration = Math.min(2, this.frustration + e * 0.25);
       this.expectation[ctx] = e * 0.95;
+      // corrida de razão: quem espera reforço continua pressionando em vez de trocar de comportamento
+      if (this.behavior === 'pressionar' && e > 0.3) this.behaviorEnd = Math.max(this.behaviorEnd, this.t + PRESS_EVERY * 1.5);
     } else {
       this.expectation[ctx] += 0.2 * (1 - this.expectation[ctx]);
       this.reinforcedPresses[ctx] += 1;
@@ -403,10 +393,6 @@ export class Sim {
     if (!moving) return;
     const d = this.targetX - this.x;
     if (Math.abs(d) < 0.01) {
-      if (this.behavior === 'comedouro' && this.pellets > 0) {
-        this.start('comer');
-        return;
-      }
       if (this.behavior === 'aproximar') {
         const next = this.intent;
         this.intent = null;
@@ -420,7 +406,8 @@ export class Sim {
   }
 
   private endBehavior(): void {
-    if (this.behavior === 'comedouro' && this.pellets > 0 && Math.abs(this.x - FEEDER_X) < NEAR) {
+    // ainda tem pelota no chão: come a próxima
+    if (this.pellets > 0) {
       this.start('comer');
       return;
     }
@@ -438,14 +425,20 @@ export class Sim {
     const rate = sinceClick < 3 ? 0.3 : 0.1;
     this.brain.vMag += rate * (1 - this.brain.vMag);
     this.brain.hunger = Math.max(0, this.brain.hunger - SATIETY_PER_PELLET);
-    if (this.orientPending !== null) this.orientStreak += 1;
-    this.orientPending = null;
+    if (this.pellets === 0) this.feedAt = Infinity;
   }
 
   private pick(): void {
     const w = this.brain.w[this.context];
     const lazy = 0.4 + 0.6 * this.brain.hunger;
     const weights = CHOICES.map(b => w[b] * (b === 'limpar' ? 1 : lazy));
+    // indução pela extinção: segurar o reforço faz aparecer o passo seguinte ao que vinha sendo reforçado
+    const link = this.lastReinforced ? CHAIN.indexOf(this.lastReinforced) : -1;
+    if (link >= 0 && link < CHAIN.length - 1) {
+      const extinction = Math.min(1, Math.max(0, (this.t - this.lastClick - 4) / 13));
+      const sum = weights.reduce((a, b) => a + b, 0);
+      weights[CHOICES.indexOf(CHAIN[link + 1])] += 0.35 * extinction * sum;
+    }
     const total = weights.reduce((a, b) => a + b, 0);
     let u = this.rng() * total;
     let choice: Choice = 'explorar';
@@ -477,7 +470,8 @@ export class Sim {
           ? Math.min(0.92, Math.max(0.08, this.favX + (this.rng() - 0.5) * 0.2))
           : 0.08 + this.rng() * 0.84;
     }
-    else if (b === 'comedouro') this.targetX = FEEDER_X;
+    // procurar comida: fareja em volta de onde está
+    else if (b === 'comedouro') this.targetX = Math.min(0.92, Math.max(0.08, this.x + (this.rng() - 0.5) * 0.2));
     else if (b === 'aproximar') {
       this.targetX = BAR_X;
       this.behaviorEnd = this.t + 30;

@@ -16,9 +16,9 @@ function summary(persona: Persona) {
 
 describe('jogador simulado completa o ciclo em menos de 5 minutos', () => {
   it.each([
-    [ATENTO, 8],
-    [DISTRAIDO, 7],
-    [ANSIOSO, 7],
+    [ATENTO, 9],
+    [DISTRAIDO, 9],
+    [ANSIOSO, 9],
   ] as const)('perfil %#', (persona, minimo) => {
     const { finished, median } = summary(persona);
     expect(finished).toBeGreaterThanOrEqual(minimo);

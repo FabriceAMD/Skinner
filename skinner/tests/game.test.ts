@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ScheduleSpec } from '../src/core/schedules';
 import { BAR_X, Sim } from '../src/game/sim';
 
 const run = (sim: Sim, seconds: number) => {
@@ -17,7 +18,7 @@ function trainAndShape(sim: Sim, limit = 1200): { tMag: number; tShape: number }
     if (sim.t < next) continue;
     next = sim.t + 0.2;
     if (tMag < 0) {
-      if (sim.orientStreak >= 5) tMag = sim.t;
+      if (sim.vMag >= 0.6) tMag = sim.t;
       else if (sim.t - last > 4 && sim.behavior !== 'comer' && sim.pellets === 0) {
         sim.click();
         last = sim.t;
@@ -73,19 +74,23 @@ describe('simulação do rato', () => {
   });
 
   it('razão fixa produz taxa maior que reforço contínuo; extinção tem surto e depois queda', () => {
-    const sim = new Sim(2);
-    trainAndShape(sim);
-    sim.setSchedule({ kind: 'FR', n: 1 });
-    run(sim, 120);
-    const crf = sim.pressesSince(60);
-    sim.setSchedule({ kind: 'FR', n: 5 });
-    run(sim, 180);
-    const fr5 = sim.pressesSince(60);
-    sim.setSchedule(null);
-    run(sim, 60);
-    const firstMinute = sim.pressesSince(60);
-    run(sim, 180);
-    const thirdMinute = sim.pressesSince(60);
+    const trained = new Sim(2);
+    trainAndShape(trained);
+    // cada esquema é medido num rato com fome, como no laboratório: cópias do mesmo rato modelado
+    const rateUnder = (spec: ScheduleSpec): Sim => {
+      const sim = new Sim(20, trained.snapshot());
+      sim.setSchedule(spec);
+      run(sim, 120);
+      return sim;
+    };
+    const crf = rateUnder({ kind: 'FR', n: 1 }).pressesSince(60);
+    const fr = rateUnder({ kind: 'FR', n: 5 });
+    const fr5 = fr.pressesSince(60);
+    fr.setSchedule(null);
+    run(fr, 60);
+    const firstMinute = fr.pressesSince(60);
+    run(fr, 180);
+    const thirdMinute = fr.pressesSince(60);
     // razão fixa: responder mais rápido rende mais reforço, então a taxa passa a do reforço contínuo
     expect(fr5).toBeGreaterThan(crf);
     expect(firstMinute).toBeGreaterThan(10);
