@@ -97,6 +97,23 @@ describe('simulação do rato', () => {
     expect(thirdMinute).toBeLessThan(firstMinute / 2);
   });
 
+  it('barra automática reforça toda pressão; barra desativada não deixa pressionar', () => {
+    const trained = new Sim(2);
+    trainAndShape(trained);
+    const auto = new Sim(21, trained.snapshot());
+    auto.barMode = 'auto';
+    run(auto, 60);
+    const presses = auto.events.filter(e => e.kind === 'press').length;
+    const clicks = auto.events.filter(e => e.kind === 'click').length;
+    expect(presses).toBeGreaterThan(3);
+    expect(clicks).toBeGreaterThanOrEqual(presses - 1);
+
+    const off = new Sim(21, trained.snapshot());
+    off.barMode = 'off';
+    run(off, 60);
+    expect(off.events.filter(e => e.kind === 'press').length).toBe(0);
+  });
+
   it('com reforço só na luz acesa, o rato passa a pressionar mais com luz', () => {
     let on = 0;
     let off = 0;

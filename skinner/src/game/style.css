@@ -115,7 +115,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .btn.click.wait { opacity: .45; }
 .btn.click:active { transform: translateY(5px); }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-.speedbar { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.speedbar { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
 .speedbar .pill { min-width: 52px; padding: 8px 12px; }
 .mini-record { width: 100%; height: auto; background: #fff; border-radius: 16px; border: 1px solid var(--line); }
 

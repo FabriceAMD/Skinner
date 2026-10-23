@@ -4,7 +4,7 @@ import { Sound } from './audio';
 import { Flow } from './flow';
 import { LIVRE, MISSIONS } from './missions';
 import { drawRatPreview, drawRecord, H, Renderer, W, type RatLook } from './render';
-import { CHOICES, freshBrain, LABEL, Sim, type Behavior, type Brain, type ClickReport } from './sim';
+import { CHOICES, freshBrain, LABEL, Sim, type Behavior, type BarMode, type Brain, type ClickReport } from './sim';
 import { mountTicker } from './ticker';
 
 const SPEEDS = [1, 2, 4, 8];
@@ -53,6 +53,10 @@ const EMOJI: Record<Behavior, string> = {
   pressionar: '⬇️',
   comer: '😋',
 };
+
+/** Um botão só alterna o modo da barra: normal → automática → desativada. */
+const BAR_LABEL: Record<BarMode, string> = { normal: '🎚️ barra', auto: '🤖 barra auto', off: '🚫 sem barra' };
+const BAR_NEXT: Record<BarMode, BarMode> = { normal: 'auto', auto: 'off', off: 'normal' };
 
 const FREE_SCHEDULES: Array<{ label: string; spec: ScheduleSpec | null }> = [
   { label: '✋ Só você clica', spec: null },
@@ -106,6 +110,8 @@ class Game {
   private wasCue = false;
   private celebrateUntil = 0;
   private tab: 'mente' | 'registro' = 'mente';
+  /** Mente/registro começa aberto; lembra se o jogador fechou. */
+  private detailsOpen = true;
 
   constructor(private readonly root: HTMLElement) {
     this.ratId = store.get<string>(KEY_RAT) ?? RATS[0].id;
@@ -252,11 +258,12 @@ class Game {
         <div class="speedbar" data-role="speedbar">
           <button class="icon" data-action="pause" aria-label="pausar">${this.paused ? '▶' : '⏸'}</button>
           ${SPEEDS.map(v => `<button class="pill" data-speed="${v}">${v}×</button>`).join('')}
+          <button class="pill bar-mode" data-action="bar" aria-label="modo da barra">${BAR_LABEL[this.sim?.barMode ?? 'normal']}</button>
         </div>
 
         ${free ? this.freeControls() : ''}
 
-        <details class="more">
+        <details class="more" ${this.detailsOpen ? 'open' : ''}>
           <summary>🧠 mente do rato · 📈 registro</summary>
           <nav class="tabs">
             <button data-tab="mente" class="${this.tab === 'mente' ? 'on' : ''}">🧠 mente</button>
@@ -273,6 +280,8 @@ class Game {
     if (!canvas || !ctx) return;
     this.renderer = new Renderer(ctx);
     canvas.addEventListener('pointerdown', () => this.studentClick());
+    const details = this.root.querySelector<HTMLDetailsElement>('details.more');
+    details?.addEventListener('toggle', () => (this.detailsOpen = details.open));
     this.recordCanvas = null;
     this.seenEvents = this.sim?.events.length ?? 0;
     this.lastFrame = null;
@@ -521,6 +530,13 @@ class Game {
       case 'home':
         this.home();
         break;
+      case 'bar': {
+        const sim = this.sim;
+        if (!sim) break;
+        sim.barMode = BAR_NEXT[sim.barMode];
+        el.textContent = BAR_LABEL[sim.barMode];
+        break;
+      }
       case 'pause':
         this.paused = !this.paused;
         el.textContent = this.paused ? '▶' : '⏸';

@@ -164,9 +164,12 @@ export class Renderer {
     c.save();
     c.translate(bx + 30, LEVER_Y);
     c.rotate(pressed ? 0.35 : 0);
-    c.fillStyle = '#374151';
-    roundRect(c, -64, -8, 64, 16, 6);
-    c.fill();
+    c.fillStyle = sim.barMode === 'auto' ? '#16a34a' : '#374151';
+    // barra desativada: recolhida para dentro do painel
+    if (sim.barMode !== 'off') {
+      roundRect(c, -64, -8, 64, 16, 6);
+      c.fill();
+    }
     c.restore();
     c.fillStyle = '#1f2937';
     roundRect(c, bx + 24, LEVER_Y - 22, 18, 44, 4);

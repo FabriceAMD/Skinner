@@ -148,6 +148,8 @@ export interface SimEvent {
   x?: number;
 }
 
+export type BarMode = 'normal' | 'auto' | 'off';
+
 export class Sim {
   t = 0;
   x = 0.5;
@@ -162,6 +164,8 @@ export class Sim {
   targets: Behavior[] = [];
   frustration = 0;
   scheduleSpec: ScheduleSpec | null = null;
+  /** normal: segue o esquema; auto: toda pressão dá pelota; off: barra recolhida, o rato não pressiona. */
+  barMode: BarMode = 'normal';
 
   private readonly rng: Rng;
   private readonly brain: Brain;
@@ -282,7 +286,7 @@ export class Sim {
 
     this.move(dt);
     let pressed = false;
-    const canPress = this.behavior === 'pressionar' || this.behavior === 'apoiar';
+    const canPress = this.barMode !== 'off' && (this.behavior === 'pressionar' || this.behavior === 'apoiar');
     if (canPress && this.atBar() && this.t >= this.nextPress) {
       pressed = true;
       this.press();
@@ -291,9 +295,8 @@ export class Sim {
       const incentive = 0.5 + this.expectation[this.context];
       this.nextPress = this.behavior === 'apoiar' ? Infinity : this.t + PRESS_EVERY / (incentive * (1 + this.frustration));
     }
-    if (this.schedule && this.schedule.step(this.t * 1000, pressed, this.rng) && this.light) {
-      this.click('automatico');
-    }
+    const scheduled = !!this.schedule && this.schedule.step(this.t * 1000, pressed, this.rng) && this.light;
+    if (scheduled || (pressed && this.barMode === 'auto')) this.click('automatico');
 
     if (this.pellets > 0 && this.behavior !== 'comer' && this.t >= this.feedAt) this.start('comer');
 
